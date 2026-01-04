@@ -3,6 +3,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { base } from '$app/paths';
 	import { LogOut, Table, LayoutDashboard } from 'lucide-svelte';
 	import type { Session } from '@supabase/supabase-js';
 
@@ -27,7 +28,7 @@
 		const { error } = await supabase.auth.signInWithOAuth({
 			provider: 'github',
 			options: {
-				redirectTo: `${window.location.origin}/auth/callback`
+				redirectTo: `${window.location.origin}${base}/auth/callback`
 			}
 		});
 		if (error) console.error('Error signing in:', error);
@@ -40,7 +41,7 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href="/calvin_surf.ico" />
+	<link rel="icon" href="{base}/calvin_surf.ico" />
 	<title>CG Tracker 2026</title>
 </svelte:head>
 
@@ -52,9 +53,9 @@
 			<h1 class="text-2xl font-bold tracking-tight text-zinc-100">CG Tracker 2026</h1>
 			{#if session}
 				<div class="flex items-center gap-4">
-					{#if $page.url.pathname === '/'}
+					{#if $page.url.pathname === base || $page.url.pathname === base + '/'}
 						<a
-							href="/full-table"
+							href="{base}/full-table"
 							class="text-zinc-400 transition-colors hover:text-indigo-400"
 							aria-label="Full Table"
 						>
@@ -62,7 +63,7 @@
 						</a>
 					{:else}
 						<a
-							href="/"
+							href="{base}/"
 							class="text-zinc-400 transition-colors hover:text-indigo-400"
 							aria-label="Dashboard"
 						>

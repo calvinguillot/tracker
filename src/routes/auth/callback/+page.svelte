@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	import { supabase } from '$lib/supabaseClient';
 
 	onMount(async () => {
@@ -14,7 +15,7 @@
 		}
 		
 		// Redirect to home after handling auth or if no code found (already logged in?)
-		goto('/');
+		goto(base || '/');
 	});
 </script>
 
