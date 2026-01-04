@@ -22,6 +22,9 @@
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.1.17",
+		"@types/d3-array": "^3.2.2",
+		"@types/d3-scale": "^4.0.9",
+		"@types/d3-time-format": "^4.0.3",
 		"@types/node": "^24",
 		"eslint": "^9.39.1",
 		"eslint-config-prettier": "^10.1.8",
@@ -39,6 +42,13 @@
 		"vite": "^7.2.6"
 	},
 	"dependencies": {
-		"@supabase/supabase-js": "^2.89.0"
+		"@supabase/supabase-js": "^2.89.0",
+		"d3-array": "^3.2.4",
+		"d3-format": "^3.1.0",
+		"d3-scale": "^4.0.2",
+		"d3-shape": "^3.2.0",
+		"d3-time-format": "^4.1.0",
+		"layercake": "^10.0.2",
+		"lucide-svelte": "^0.562.0"
 	}
 }

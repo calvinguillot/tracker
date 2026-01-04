@@ -1,9 +1,8 @@
 import { supabase } from '$lib/supabaseClient';
 
 export async function load() {
-	const { data } = await supabase.from('dailyTracking').select().order('created_at', { ascending: false });
+	// We'll load the data on the client side to allow instant navigation
 	return {
-		dailyTracking: data ?? []
+		dailyTracking: []
 	};
 }
-

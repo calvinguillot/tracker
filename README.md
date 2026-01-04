@@ -2,15 +2,16 @@
 
 A simple daily tracking app built with SvelteKit and Supabase. Hosted on github pages.
 
-## To-Do
+## Dataviz Features
 
-- Create a single page input and statistics
-- Create a mobile friendly
-- Create a chartjs or something that works with svelte
+- Able to enable and disable columns
+- Tooltips for desktop only
+- Add a way to filter the data(date range)
+- Distribution chart for average day
+- Chart for amount of activities in the year
+- Line chart tracking mood, energy, physical, sleep, meals, weight
 
-## Tips and tricks
-
-### Setup
+## Setup
 
 Create a new Svelte 5 proejct with the following command:
 
@@ -20,7 +21,7 @@ npx sv create my-app
 
 Create a new repository in Github. Then import the project or add the git folder to the project folder.
 
-### Supabase
+## Supabase
 
 More information about using Supabase with SvelteKit can be found in this [guide](https://supabase.com/docs/guides/getting-started/quickstarts/sveltekit).
 
@@ -48,7 +49,7 @@ export const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLIS
 
 Remember to add the database schema to the root directory and gitignore it.
 
-### Github Pages
+## Github Pages
 
 For github pages use the following command:
 
@@ -76,6 +77,6 @@ in the package.json file, add the following script:
 
 This will build the app and deploy it to github pages.
 
-### Authentication
+## Authentication
 
 You can find information about authentication with Supabase and SvelteKit in this [guide](https://supabase.com/docs/guides/auth/social-login/auth-github?queryGroups=environment&environment=client&queryGroups=framework&framework=sveltekit&queryGroups=language&language=js).
