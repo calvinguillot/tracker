@@ -4,11 +4,7 @@ A simple daily tracking app built with SvelteKit and Supabase. Hosted on github 
 
 ## To-Do
 
-- Define the database schema in supabase
-- Create, update and delete daily tracking entries from the app
 - Create a single page input and statistics
-- Create a page for viewing the whole database
-- Create a dark mode
 - Create a mobile friendly
 - Create a chartjs or something that works with svelte
 
@@ -49,6 +45,8 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/stati
 
 export const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 ```
+
+Remember to add the database schema to the root directory and gitignore it.
 
 ### Github Pages
 

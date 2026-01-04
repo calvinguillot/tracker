@@ -51,24 +51,39 @@
 
 <div class="container mx-auto p-4">
 	<header class="mb-8 flex items-center justify-between">
-		<h1 class="text-2xl font-bold">Tracker</h1>
+		<h1 class="text-2xl font-bold tracking-tight text-zinc-100">Tracker</h1>
 		{#if session}
 			<div class="flex items-center gap-4">
-				<a href="/full-table" class="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
-					>Full Table View</a
+				<a
+					href="/full-table"
+					class="text-sm font-semibold text-indigo-400 transition-colors hover:text-indigo-300"
+					>Full Table</a
 				>
-				<span class="text-sm text-gray-600">{session.user.email}</span>
 				<button
 					onclick={signOut}
-					class="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+					class="p-2 text-zinc-400 transition-colors hover:text-red-400"
+					aria-label="Sign Out"
 				>
-					Sign Out
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-6 w-6"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+						/>
+					</svg>
 				</button>
 			</div>
 		{:else}
 			<button
 				onclick={signInWithGithub}
-				class="rounded bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+				class="rounded bg-zinc-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-800"
 			>
 				Sign In with GitHub
 			</button>
@@ -76,15 +91,26 @@
 	</header>
 
 	{#if session}
-		<main
-			class="flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-gray-50 py-12"
-		>
-			<h2 class="mb-6 text-xl font-semibold">Daily Tracking</h2>
+		<main class="flex min-h-[50vh] flex-col items-center justify-center">
 			<button
 				onclick={() => (isModalOpen = true)}
-				class="rounded bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+				class="rounded-full bg-indigo-600 p-8 text-white shadow-xl transition-all hover:scale-105 hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+				aria-label="Create New Entry"
 			>
-				Create New Entry
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-16 w-16"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M12 4v16m8-8H4"
+					/>
+				</svg>
 			</button>
 
 			<EntryModal
@@ -96,8 +122,8 @@
 		</main>
 	{:else}
 		<div class="py-12 text-center">
-			<h2 class="text-xl font-semibold text-gray-900">Welcome to Tracker</h2>
-			<p class="mt-2 text-gray-600">Please sign in to start tracking.</p>
+			<h2 class="text-xl font-semibold text-zinc-100">Welcome to Tracker</h2>
+			<p class="mt-2 text-zinc-400">Please sign in to start tracking.</p>
 		</div>
 	{/if}
 </div>
