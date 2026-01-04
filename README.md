@@ -4,16 +4,13 @@ A simple daily tracking app built with SvelteKit and Supabase. Hosted on github 
 
 ## To-Do
 
-- [ ] Add a way to add a new daily tracking entry
-- [ ] Add a way to edit a daily tracking entry
-- [ ] Add a way to delete a daily tracking entry
-- [ ] Add a way to view a daily tracking entry
-- [ ] Add authentication with github
-- [ ] Single page input and statistics
-- [ ] Page for viewing the whole database
-- [ ] Dark mode
-- [ ] Mobile friendly
-- [ ] Chartjs or something that works with svelte
+- Define the database schema in supabase
+- Create, update and delete daily tracking entries from the app
+- Create a single page input and statistics
+- Create a page for viewing the whole database
+- Create a dark mode
+- Create a mobile friendly
+- Create a chartjs or something that works with svelte
 
 ## Tips and tricks
 
