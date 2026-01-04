@@ -82,3 +82,5 @@ in the package.json file, add the following script:
 This will build the app and deploy it to github pages.
 
 ### Authentication
+
+You can find information about authentication with Supabase and SvelteKit in this [guide](https://supabase.com/docs/guides/auth/social-login/auth-github?queryGroups=environment&environment=client&queryGroups=framework&framework=sveltekit&queryGroups=language&language=js).
