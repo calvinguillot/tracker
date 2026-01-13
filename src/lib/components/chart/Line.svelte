@@ -8,10 +8,10 @@
 	let path = $derived(
 		'M' +
 			$data
-				.filter(d => yAccessorKey ? d[yAccessorKey] != null : true)
+				.filter((d) => (yAccessorKey ? d[yAccessorKey] != null : true))
 				.map((d) => {
 					const x = $xGet(d);
-                    const y = yAccessorKey ? $yScale(d[yAccessorKey]) : $yGet(d);
+					const y = yAccessorKey ? $yScale(d[yAccessorKey]) : $yGet(d);
 					return x + ',' + y;
 				})
 				.join('L')

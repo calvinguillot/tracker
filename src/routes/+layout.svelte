@@ -46,9 +46,9 @@
 </svelte:head>
 
 <div
-	class="min-h-screen bg-zinc-950 text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white"
+	class="flex min-h-screen flex-col bg-zinc-950 text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white"
 >
-	<div class="container mx-auto p-4">
+	<div class="container mx-auto flex-1 p-4">
 		<header class="mb-8 flex items-center justify-between">
 			<h1 class="text-2xl font-bold tracking-tight text-zinc-100">CG Tracker 2026</h1>
 			{#if session}
@@ -72,7 +72,7 @@
 					{/if}
 					<button
 						onclick={signOut}
-						class="p-2 text-red-500 transition-colors hover:bg-zinc-800/50 hover:text-red-400 rounded-full"
+						class="rounded-full p-2 text-red-500 transition-colors hover:bg-zinc-800/50 hover:text-red-400"
 						aria-label="Sign Out"
 					>
 						<LogOut class="h-6 w-6" />
@@ -89,4 +89,7 @@
 		</header>
 		{@render children()}
 	</div>
+	<footer class="border-t border-zinc-800 py-6 text-center text-sm text-zinc-500">
+		© {new Date().getFullYear()} Calvin Guillot
+	</footer>
 </div>

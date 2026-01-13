@@ -106,20 +106,21 @@
 		'work_type',
 		'study_type',
 		'culture_type',
+		'art_type',
 		'music_type',
 		'exercise_type',
 		'leisure_type',
-		'family_type',
 		'calvin_day',
+		'ihana',
+		'call_family',
 		'dreams_type',
-		'reminder_type',
 		'notes'
 	];
 </script>
 
 <div>
 	<div class="mb-6 flex items-center justify-between">
-		<h2 class="text-xl font-bold text-zinc-100">Full Table</h2>
+		<h2 class="text-lg font-bold text-zinc-100">Full Table</h2>
 		{#if session}
 			<button
 				onclick={openNew}

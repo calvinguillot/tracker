@@ -13,7 +13,7 @@
 				console.error('Error exchanging code for session:', error);
 			}
 		}
-		
+
 		// Redirect to home after handling auth or if no code found (already logged in?)
 		goto(base || '/');
 	});

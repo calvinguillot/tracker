@@ -80,23 +80,23 @@
 
 <style>
 	.tick {
-		font-size: 11px;
+		font-size: 12px;
+		font-weight: 500;
 	}
 
 	.tick line {
-		stroke: #aaa;
+		stroke: #3f3f46;
 	}
 	.tick .gridline {
 		stroke-dasharray: 2;
 	}
 
 	.tick text {
-		fill: #666;
+		fill: #a1a1aa;
 	}
 
 	.tick.tick-0 line {
 		stroke-dasharray: 0;
+		stroke: #52525b;
 	}
 </style>
-
-

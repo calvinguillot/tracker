@@ -31,7 +31,7 @@
 
 	let halfBand = $derived(isBandwidth ? $xScale.bandwidth() / 2 : 0);
 
-    function textAnchor(i) {
+	function textAnchor(i) {
 		if (snapLabels === true) {
 			if (i === 0) {
 				return 'start';
@@ -63,12 +63,8 @@
 					y2={tickGutter + tickLen}
 				/>
 			{/if}
-			<text
-				x={halfBand}
-				y={tickGutter + tickLen}
-				{dx}
-				{dy}
-				text-anchor={textAnchor(i)}>{format(tick)}</text
+			<text x={halfBand} y={tickGutter + tickLen} {dx} {dy} text-anchor={textAnchor(i)}
+				>{format(tick)}</text
 			>
 		</g>
 	{/each}
@@ -76,17 +72,18 @@
 
 <style>
 	.tick {
-		font-size: 11px;
+		font-size: 12px;
+		font-weight: 500;
 	}
 
 	line,
 	.tick line {
-		stroke: #aaa;
+		stroke: #52525b;
 		stroke-dasharray: 2;
 	}
 
 	.tick text {
-		fill: #666;
+		fill: #a1a1aa;
 	}
 
 	.tick .tick-mark,
@@ -101,5 +98,3 @@
 		transform: translateX(-3px);
 	}
 </style>
-
-
