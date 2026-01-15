@@ -5,6 +5,7 @@
 	import { onMount, untrack } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { Plus, Loader } from 'lucide-svelte';
+	import { showAlert, showConfirm } from '$lib/alertStore.svelte';
 
 	let { data } = $props();
 	let trackingData = $state<any[]>(untrack(() => data.dailyTracking));
@@ -60,12 +61,19 @@
 	}
 
 	async function handleDelete(id: number) {
-		if (!confirm('Are you sure you want to delete this entry?')) return;
+		const confirmed = await showConfirm(
+			'Are you sure you want to delete this entry?',
+			'Delete Entry',
+			{ confirmText: 'Delete', isDestructive: true }
+		);
+
+		if (!confirmed) return;
 
 		const { error } = await supabase.from('dailyTracking').delete().eq('id', id);
 		if (error) {
-			alert(error.message);
+			showAlert(error.message, 'Error');
 		} else {
+			showAlert('Entry deleted successfully', 'Success');
 			fetchData();
 		}
 	}
@@ -79,16 +87,18 @@
 				.update(updates)
 				.eq('id', currentEntry.id);
 
-			if (error) alert(error.message);
+			if (error) showAlert(error.message, 'Error');
 			else {
+				showAlert('Entry updated successfully', 'Success');
 				isModalOpen = false;
 				fetchData();
 			}
 		} else {
 			// Create
 			const { error } = await supabase.from('dailyTracking').insert(entry);
-			if (error) alert(error.message);
+			if (error) showAlert(error.message, 'Error');
 			else {
+				showAlert('Entry created successfully', 'Success');
 				isModalOpen = false;
 				fetchData();
 			}

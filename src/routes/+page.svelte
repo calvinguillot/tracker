@@ -12,6 +12,7 @@
 	import AxisX from '$lib/components/chart/AxisX.svelte';
 	import AxisY from '$lib/components/chart/AxisY.svelte';
 	import SharedTooltip from '$lib/components/chart/SharedTooltip.svelte';
+	import { showAlert } from '$lib/alertStore.svelte';
 
 	let { data } = $props();
 	let session = $state<Session | null>(null);
@@ -200,10 +201,10 @@
 		const { error } = await supabase.from('dailyTracking').insert(entry);
 		if (error) {
 			console.error('Error saving entry:', error);
-			alert('Error saving entry: ' + error.message);
+			showAlert('Error saving entry: ' + error.message, 'Error');
 		} else {
 			isModalOpen = false;
-			alert('Entry saved successfully!');
+			showAlert('Entry saved successfully!', 'Success');
 			fetchData(); // Refresh data
 		}
 	}
