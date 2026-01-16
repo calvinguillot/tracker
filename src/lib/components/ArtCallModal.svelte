@@ -63,10 +63,10 @@
 		tabindex="-1"
 	>
 		<div
-			class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl"
+			class="flex max-h-[85dvh] w-full max-w-2xl flex-col overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl"
 		>
 			<div
-				class="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-zinc-900 p-6"
+				class="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-zinc-900 p-4 md:p-6"
 			>
 				<h2 class="text-xl font-bold text-zinc-100">{entry ? 'Edit Art Call' : 'New Art Call'}</h2>
 				<button
@@ -91,7 +91,7 @@
 				</button>
 			</div>
 
-			<form onsubmit={handleSubmit} class="space-y-6 p-6">
+			<form onsubmit={handleSubmit} class="space-y-6 p-4 md:p-6">
 				<!-- Name -->
 				<div>
 					<label for="name" class="mb-1 block text-sm font-medium text-zinc-400">Name</label>

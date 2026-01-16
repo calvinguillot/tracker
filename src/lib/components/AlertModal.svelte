@@ -58,7 +58,7 @@
 				</button>
 			</div>
 
-			<div class="p-6">
+			<div class="p-4 md:p-6">
 				<p class="text-zinc-300">{alertState.message}</p>
 			</div>
 
