@@ -16,7 +16,7 @@
 
 {#if isOpen && entry}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm md:p-4"
 		onclick={handleBackgroundClick}
 		onkeydown={handleKeydown}
 		role="dialog"
@@ -24,10 +24,10 @@
 		tabindex="-1"
 	>
 		<div
-			class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl"
+			class="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl md:max-h-[90vh]"
 		>
 			<div
-				class="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-zinc-900 p-6"
+				class="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-zinc-900 p-4 md:p-6"
 			>
 				<h2 class="text-xl font-bold text-zinc-100">Entry Details</h2>
 				<button
@@ -52,7 +52,7 @@
 				</button>
 			</div>
 
-			<div class="space-y-6 p-6">
+			<div class="space-y-6 p-4 md:p-6">
 				<!-- Date -->
 				<div>
 					<h3 class="text-sm font-medium text-zinc-400">Date</h3>
@@ -142,7 +142,7 @@
 				{/if}
 			</div>
 
-			<div class="sticky bottom-0 rounded-b-xl border-t border-zinc-800 bg-zinc-900 p-6">
+			<div class="sticky bottom-0 rounded-b-xl border-t border-zinc-800 bg-zinc-900 p-4 md:p-6">
 				<button
 					onclick={onClose}
 					class="w-full rounded-md bg-zinc-800 px-3.5 py-2.5 text-sm font-semibold text-zinc-200 shadow-sm ring-1 ring-zinc-700 transition-colors ring-inset hover:bg-zinc-700"

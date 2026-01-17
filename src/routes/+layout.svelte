@@ -3,12 +3,13 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
-	import { LogOut, Table, LayoutDashboard, Palette } from 'lucide-svelte';
+	import { LogOut, Table, LayoutDashboard, Palette, Menu, X, Folder } from 'lucide-svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import AlertModal from '$lib/components/AlertModal.svelte';
 
 	let { children } = $props();
 	let session = $state<Session | null>(null);
+	let isMobileMenuOpen = $state(false);
 
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -64,7 +65,7 @@
 			</div>
 
 			{#if session}
-				<nav class="flex items-center justify-center gap-2">
+				<nav class="hidden items-center justify-center gap-2 md:flex">
 					<a
 						href="{base}/"
 						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
@@ -86,15 +87,37 @@
 					>
 						<Palette class="h-6 w-6" />
 					</a>
+					<a
+						href="{base}/projects"
+						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
+						aria-label="Projects"
+					>
+						<Folder class="h-6 w-6" />
+					</a>
 				</nav>
 
-				<div class="flex items-center justify-end gap-4 justify-self-end">
+				<div class="hidden items-center justify-end gap-4 justify-self-end md:flex">
 					<button
 						onclick={signOut}
 						class="rounded-full p-2 text-red-500 transition-colors hover:bg-zinc-800/50 hover:text-red-400"
 						aria-label="Sign Out"
 					>
 						<LogOut class="h-6 w-6" />
+					</button>
+				</div>
+
+				<!-- Mobile Menu Button -->
+				<div class="col-start-3 flex justify-end md:hidden">
+					<button
+						onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}
+						class="rounded-md p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+						aria-label="Toggle Menu"
+					>
+						{#if isMobileMenuOpen}
+							<X class="h-6 w-6" />
+						{:else}
+							<Menu class="h-6 w-6" />
+						{/if}
 					</button>
 				</div>
 			{:else}
@@ -108,6 +131,56 @@
 				</div>
 			{/if}
 		</header>
+
+		<!-- Mobile Menu Overlay -->
+		{#if session && isMobileMenuOpen}
+			<div class="mb-8 flex flex-col gap-2 rounded-lg bg-zinc-900 p-4 md:hidden">
+				<a
+					href="{base}/"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					onclick={() => (isMobileMenuOpen = false)}
+				>
+					<LayoutDashboard class="h-5 w-5" />
+					<span class="font-medium">Dashboard</span>
+				</a>
+				<a
+					href="{base}/full-table"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					onclick={() => (isMobileMenuOpen = false)}
+				>
+					<Table class="h-5 w-5" />
+					<span class="font-medium">Full Table</span>
+				</a>
+				<a
+					href="{base}/artcalls"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					onclick={() => (isMobileMenuOpen = false)}
+				>
+					<Palette class="h-5 w-5" />
+					<span class="font-medium">Art Calls</span>
+				</a>
+				<a
+					href="{base}/projects"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					onclick={() => (isMobileMenuOpen = false)}
+				>
+					<Folder class="h-5 w-5" />
+					<span class="font-medium">Projects</span>
+				</a>
+				<div class="my-2 border-t border-zinc-800"></div>
+				<button
+					onclick={() => {
+						signOut();
+						isMobileMenuOpen = false;
+					}}
+					class="flex w-full items-center gap-3 rounded-md p-3 text-left text-red-500 transition-colors hover:bg-zinc-800/50 hover:text-red-400"
+				>
+					<LogOut class="h-5 w-5" />
+					<span class="font-medium">Sign Out</span>
+				</button>
+			</div>
+		{/if}
+
 		{@render children()}
 	</div>
 	<footer class="border-t border-zinc-800 py-6 text-center text-sm text-zinc-500">
