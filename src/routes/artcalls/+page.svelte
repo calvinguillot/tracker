@@ -4,7 +4,7 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { Loader, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
 	import ArtCallModal from '$lib/components/ArtCallModal.svelte';
-	import { showAlert } from '$lib/alertStore.svelte';
+	import { showAlert, showConfirm } from '$lib/alertStore.svelte';
 
 	type ArtCall = {
 		id: number;
@@ -117,6 +117,26 @@
 	function openEdit(entry: ArtCall) {
 		currentEntry = entry;
 		isModalOpen = true;
+	}
+
+	async function handleDelete(id: number) {
+		const confirmed = await showConfirm(
+			'Are you sure you want to delete this art call?',
+			'Delete Art Call',
+			{ confirmText: 'Delete', isDestructive: true }
+		);
+
+		if (!confirmed) return;
+
+		const { error } = await supabase.from('artCalls').delete().eq('id', id);
+
+		if (error) {
+			console.error('Error deleting art call:', error);
+			showAlert('Error deleting: ' + error.message, 'Error');
+		} else {
+			showAlert('Art call deleted successfully!', 'Success');
+			fetchData();
+		}
 	}
 
 	async function handleSave(entry: any) {
@@ -294,16 +314,58 @@
 								</div>
 							</div>
 
-							{#if call.link}
-								<a
-									class="rounded-md bg-indigo-500/10 px-3 py-1.5 text-xs font-medium text-indigo-400 transition-colors hover:bg-indigo-500/20 hover:text-indigo-300"
-									href={call.link}
-									target="_blank"
-									rel="noreferrer"
+							<div class="flex items-center gap-2">
+								{#if call.link}
+									<a
+										class="rounded-md bg-indigo-500/10 px-3 py-1.5 text-xs font-medium text-indigo-400 transition-colors hover:bg-indigo-500/20 hover:text-indigo-300"
+										href={call.link}
+										target="_blank"
+										rel="noreferrer"
+									>
+										Visit Link &rarr;
+									</a>
+								{/if}
+								<button
+									onclick={() => openEdit(call)}
+									class="rounded-md p-2 text-indigo-400 transition-colors hover:bg-zinc-800 hover:text-indigo-300"
+									aria-label="Edit"
 								>
-									Visit Link &rarr;
-								</a>
-							{/if}
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-5 w-5"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+										/>
+									</svg>
+								</button>
+								<button
+									onclick={() => handleDelete(call.id)}
+									class="rounded-md p-2 text-red-400 transition-colors hover:bg-zinc-800 hover:text-red-300"
+									aria-label="Delete"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-5 w-5"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+										/>
+									</svg>
+								</button>
+							</div>
 						</div>
 					</div>
 				</li>
