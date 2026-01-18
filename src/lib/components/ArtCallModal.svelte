@@ -7,7 +7,8 @@
 		type: null as number | null,
 		funds: null as number | null,
 		deadline: '',
-		link: ''
+		link: '',
+		applied: false
 	});
 
 	$effect(() => {
@@ -19,7 +20,8 @@
 					type: entry.type,
 					funds: entry.funds,
 					deadline: entry.deadline ? new Date(entry.deadline).toISOString().split('T')[0] : '',
-					link: entry.link || ''
+					link: entry.link || '',
+					applied: entry.applied || false
 				};
 			} else {
 				// Reset
@@ -29,7 +31,8 @@
 					type: null,
 					funds: null,
 					deadline: '',
-					link: ''
+					link: '',
+					applied: false
 				};
 			}
 		}
@@ -159,7 +162,7 @@
 					/>
 				</div>
 
-				<!-- Link -->
+					<!-- Link -->
 				<div>
 					<label for="link" class="mb-1 block text-sm font-medium text-zinc-400">Link</label>
 					<input
@@ -169,6 +172,17 @@
 						placeholder="https://"
 						class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 					/>
+				</div>
+
+				<!-- Applied Toggle -->
+				<div class="flex items-center">
+					<input
+						type="checkbox"
+						id="applied"
+						bind:checked={formData.applied}
+						class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
+					/>
+					<label for="applied" class="ml-2 block text-sm font-medium text-zinc-300">Applied</label>
 				</div>
 
 				<div

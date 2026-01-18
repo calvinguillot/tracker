@@ -18,8 +18,11 @@
 	let session = $state<Session | null>(null);
 	let isModalOpen = $state(false);
 	let isLoading = $state(true);
+	let isStatsLoading = $state(false);
 
 	let rawData = $state<any[]>([]);
+	let appliedArtCallsCount = $state(0);
+	let completedProjectsCount = $state(0);
 
 	let parsedData = $derived(
 		rawData
@@ -165,7 +168,10 @@
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
-			if (s) fetchData();
+			if (s) {
+				fetchData();
+				fetchProjectStats();
+			}
 			else isLoading = false;
 		});
 
@@ -173,7 +179,10 @@
 			data: { subscription }
 		} = supabase.auth.onAuthStateChange((_event, _session) => {
 			session = _session;
-			if (_session) fetchData();
+			if (_session) {
+				fetchData();
+				fetchProjectStats();
+			}
 			else isLoading = false;
 		});
 
@@ -195,6 +204,30 @@
 			console.error('Error fetching data:', error);
 		}
 		isLoading = false;
+	}
+
+	async function fetchProjectStats() {
+		isStatsLoading = true;
+
+		const [{ count: appliedCount, error: appliedError }, { count: completedCount, error: completedError }] =
+			await Promise.all([
+				supabase.from('artCalls').select('id', { count: 'exact', head: true }).eq('applied', true),
+				supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 3)
+			]);
+
+		if (appliedError) {
+			console.error('Error fetching applied art calls count:', appliedError);
+		} else {
+			appliedArtCallsCount = appliedCount ?? 0;
+		}
+
+		if (completedError) {
+			console.error('Error fetching completed projects count:', completedError);
+		} else {
+			completedProjectsCount = completedCount ?? 0;
+		}
+
+		isStatsLoading = false;
 	}
 
 	async function handleSave(entry: any) {
@@ -343,6 +376,33 @@
 									</div>
 								</div>
 							{/each}
+						</div>
+						<div class="pt-2">
+							<h2 class="text-lg font-semibold text-zinc-100">Projects</h2>
+						</div>
+						<div class="grid grid-cols-2 gap-2">
+							<div class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800">
+								<div class="flex items-center gap-2.5">
+									<span class="text-lg">📝</span>
+									<div class="flex-1">
+										<div class="text-xs font-medium text-zinc-300">Applied Art Calls</div>
+									</div>
+									<div class="text-xl font-bold text-white">
+										{isStatsLoading ? '—' : appliedArtCallsCount}
+									</div>
+								</div>
+							</div>
+							<div class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800">
+								<div class="flex items-center gap-2.5">
+									<span class="text-lg">✅</span>
+									<div class="flex-1">
+										<div class="text-xs font-medium text-zinc-300">Completed Projects</div>
+									</div>
+									<div class="text-xl font-bold text-white">
+										{isStatsLoading ? '—' : completedProjectsCount}
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 				{/if}

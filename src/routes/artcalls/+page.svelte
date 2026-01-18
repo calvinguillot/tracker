@@ -15,6 +15,7 @@
 		funds: number | null;
 		deadline: string | null;
 		link: string;
+		applied: boolean;
 	};
 
 	const typeLabels: Record<number, string> = {
@@ -96,7 +97,7 @@
 		console.log('Fetching art calls...');
 		const { data: d, error } = await supabase
 			.from('artCalls')
-			.select('id, created_at, name, location, type, funds, deadline, link')
+			.select('id, created_at, name, location, type, funds, deadline, link, applied')
 			.order('deadline', { ascending: true });
 
 		if (!error && d) {
@@ -259,10 +260,17 @@
 									<span>{formatType(call.type)}</span>
 								</div>
 							</div>
-							<div
-								class={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${status.bg} ${status.text} border-transparent`}
-							>
-								{status.label}
+							<div class="flex flex-col items-end gap-1">
+								<div
+									class={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${status.bg} ${status.text} border-transparent text-center`}
+								>
+									{status.label}
+								</div>
+								{#if call.applied}
+									<span class="text-xs font-medium text-emerald-400">Applied</span>
+								{:else}
+									<span class="text-xs text-zinc-500">Not applied</span>
+								{/if}
 							</div>
 						</div>
 

@@ -34,6 +34,37 @@
 	let isModalOpen = $state(false);
 	let currentEntry = $state<Project | null>(null);
 
+	// Sorting state
+	type SortField = 'name' | 'date' | 'progress';
+	let sortField = $state<SortField>('date');
+	let sortDirection = $state<'asc' | 'desc'>('desc');
+
+	let sortedProjects = $derived(
+		[...projects].sort((a, b) => {
+			const modifier = sortDirection === 'asc' ? 1 : -1;
+
+			if (sortField === 'name') {
+				return a.name.localeCompare(b.name) * modifier;
+			} else if (sortField === 'date') {
+				const dateA = new Date(a.created_at).getTime();
+				const dateB = new Date(b.created_at).getTime();
+				return (dateA - dateB) * modifier;
+			} else if (sortField === 'progress') {
+				return ((a.percentage || 0) - (b.percentage || 0)) * modifier;
+			}
+			return 0;
+		})
+	);
+
+	function toggleSort(field: SortField) {
+		if (sortField === field) {
+			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+		} else {
+			sortField = field;
+			sortDirection = 'asc'; // Default to asc for new field
+		}
+	}
+
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
@@ -131,6 +162,21 @@
 	const formatFunds = (value: number | null) => (value === null ? '—' : `€${value}`);
 	const formatDate = (value: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
 	const getStatusLabel = (status: number) => statusLabels[status] ?? 'Unknown';
+	const getStatusClasses = (status: number) => {
+		switch (status) {
+			case 1:
+				return 'bg-amber-500/10 text-amber-400';
+			case 2:
+				return 'bg-purple-500/10 text-purple-400';
+			case 3:
+				return 'bg-emerald-500/10 text-emerald-400';
+			case 4:
+				return 'bg-red-500/10 text-red-400';
+			case 0:
+			default:
+				return 'bg-zinc-800 text-zinc-400';
+		}
+	};
 </script>
 
 <ProjectModal
@@ -167,8 +213,28 @@
 			No projects yet.
 		</div>
 	{:else}
+		<!-- Sorting Controls -->
+		<div class="mb-4 flex flex-wrap items-center gap-4 text-sm">
+			<span class="text-zinc-500">Sort by:</span>
+			{#each ['name', 'date', 'progress'] as field}
+				<button
+					class={`flex items-center gap-1 rounded-md px-3 py-1.5 transition-colors ${sortField === field ? 'bg-indigo-500/20 text-indigo-300' : 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800'}`}
+					onclick={() => toggleSort(field as SortField)}
+				>
+					<span class="capitalize">{field}</span>
+					{#if sortField === field}
+						{#if sortDirection === 'asc'}
+							<ArrowUp class="h-3 w-3" />
+						{:else}
+							<ArrowDown class="h-3 w-3" />
+						{/if}
+					{/if}
+				</button>
+			{/each}
+		</div>
+
 		<ul class="grid grid-cols-1 gap-4">
-			{#each projects as project}
+			{#each sortedProjects as project}
 				<li
 					class="group relative flex flex-col gap-4 rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-all hover:border-zinc-700 hover:bg-zinc-900/80"
 				>
@@ -195,7 +261,7 @@
 						<!-- Content Right (Progress) -->
 						<div class="flex w-full shrink-0 flex-col gap-2 md:w-56">
 							<div class="flex justify-end">
-								<span class="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400"
+								<span class={`rounded-full px-2 py-0.5 text-xs ${getStatusClasses(project.status)}`}
 									>{getStatusLabel(project.status)}</span
 								>
 							</div>
