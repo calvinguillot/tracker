@@ -31,6 +31,7 @@
 	let artCalls = $state<ArtCall[]>([]);
 	let isModalOpen = $state(false);
 	let currentEntry = $state<ArtCall | null>(null);
+	let appliedCount = $derived(artCalls.filter((call) => call.applied).length);
 
 	// Sorting state
 	type SortField = 'name' | 'funds' | 'deadline' | 'created' | 'status';
@@ -275,6 +276,9 @@
 					{/if}
 				</button>
 			{/each}
+			<span class="ml-auto text-xs text-zinc-500">
+				Applied {appliedCount} / {artCalls.length}
+			</span>
 		</div>
 
 		<ul class="grid grid-cols-1 gap-3">

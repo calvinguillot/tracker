@@ -2,7 +2,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Loader, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
+	import { Loader, Plus, ArrowUp, ArrowDown, List, Calendar } from 'lucide-svelte';
 	import ProjectModal from '$lib/components/ProjectModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 
@@ -33,6 +33,7 @@
 	let projects = $state<Project[]>([]);
 	let isModalOpen = $state(false);
 	let currentEntry = $state<Project | null>(null);
+	let viewMode = $state<'list' | 'gantt'>('list');
 
 	// Sorting state
 	type SortField = 'name' | 'date' | 'progress';
@@ -55,6 +56,55 @@
 			return 0;
 		})
 	);
+
+	let ganttData = $derived.by(() => {
+		const validProjects = sortedProjects.filter((p) => p.start_at && p.end_at);
+		if (validProjects.length === 0) {
+			const now = new Date();
+			return {
+				start: new Date(now.getFullYear(), 0, 1),
+				end: new Date(now.getFullYear(), 11, 31),
+				projects: [] as Project[],
+				months: [] as Date[]
+			};
+		}
+
+		const dates = validProjects.flatMap((p) => [new Date(p.start_at!), new Date(p.end_at!)]);
+		const min = new Date(Math.min(...dates.map((d) => d.getTime())));
+		const max = new Date(Math.max(...dates.map((d) => d.getTime())));
+
+		// Add padding (1 week)
+		const start = new Date(min);
+		start.setDate(start.getDate() - 7);
+		const end = new Date(max);
+		end.setDate(end.getDate() + 7);
+
+		// Generate months for axis
+		const months: Date[] = [];
+		const current = new Date(start);
+		current.setDate(1);
+		while (current <= end) {
+			months.push(new Date(current));
+			current.setMonth(current.getMonth() + 1);
+		}
+		if (months.length === 0) {
+			months.push(new Date(start.getFullYear(), start.getMonth(), 1));
+		}
+
+		return { start, end, projects: validProjects, months };
+	});
+
+	function getGanttStyle(project: Project, start: Date, end: Date) {
+		if (!project.start_at || !project.end_at) return '';
+		const totalDuration = end.getTime() - start.getTime();
+		const projectStart = new Date(project.start_at).getTime();
+		const projectEnd = new Date(project.end_at).getTime();
+		
+		const left = ((projectStart - start.getTime()) / totalDuration) * 100;
+		const width = ((projectEnd - projectStart) / totalDuration) * 100;
+
+		return `left: ${Math.max(0, left)}%; width: ${Math.min(100, width)}%;`;
+	}
 
 	function toggleSort(field: SortField) {
 		if (sortField === field) {
@@ -214,26 +264,47 @@
 		</div>
 	{:else}
 		<!-- Sorting Controls -->
-		<div class="mb-4 flex flex-wrap items-center gap-4 text-sm">
-			<span class="text-zinc-500">Sort by:</span>
-			{#each ['name', 'date', 'progress'] as field}
-				<button
-					class={`flex items-center gap-1 rounded-md px-3 py-1.5 transition-colors ${sortField === field ? 'bg-indigo-500/20 text-indigo-300' : 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800'}`}
-					onclick={() => toggleSort(field as SortField)}
-				>
-					<span class="capitalize">{field}</span>
-					{#if sortField === field}
-						{#if sortDirection === 'asc'}
-							<ArrowUp class="h-3 w-3" />
-						{:else}
-							<ArrowDown class="h-3 w-3" />
+		<div class="mb-4 flex flex-wrap items-center justify-between gap-4 text-sm">
+			<div class="flex flex-wrap items-center gap-4">
+				<span class="text-zinc-500">Sort by:</span>
+				{#each ['name', 'date', 'progress'] as field}
+					<button
+						class={`flex items-center gap-1 rounded-md px-3 py-1.5 transition-colors ${sortField === field ? 'bg-indigo-500/20 text-indigo-300' : 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800'}`}
+						onclick={() => toggleSort(field as SortField)}
+					>
+						<span class="capitalize">{field}</span>
+						{#if sortField === field}
+							{#if sortDirection === 'asc'}
+								<ArrowUp class="h-3 w-3" />
+							{:else}
+								<ArrowDown class="h-3 w-3" />
+							{/if}
 						{/if}
-					{/if}
+					</button>
+				{/each}
+			</div>
+
+			<!-- View Toggle -->
+			<div class="flex items-center rounded-lg bg-zinc-800/50 p-1">
+				<button
+					class={`rounded-md p-1.5 transition-all ${viewMode === 'list' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+					onclick={() => (viewMode = 'list')}
+					aria-label="List View"
+				>
+					<List class="h-4 w-4" />
 				</button>
-			{/each}
+				<button
+					class={`rounded-md p-1.5 transition-all ${viewMode === 'gantt' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+					onclick={() => (viewMode = 'gantt')}
+					aria-label="Gantt View"
+				>
+					<Calendar class="h-4 w-4" />
+				</button>
+			</div>
 		</div>
 
-		<ul class="grid grid-cols-1 gap-4">
+		{#if viewMode === 'list'}
+			<ul class="grid grid-cols-1 gap-4">
 			{#each sortedProjects as project}
 				<li
 					class="group relative flex flex-col gap-4 rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-all hover:border-zinc-700 hover:bg-zinc-900/80"
@@ -357,5 +428,63 @@
 				</li>
 			{/each}
 		</ul>
+		{:else}
+			<div class="w-full overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+				<div class="min-w-[800px] relative">
+					<!-- Vertical Grid Lines -->
+					<div class="absolute inset-0 pointer-events-none">
+						{#each ganttData.months as month}
+							<div
+								class="absolute top-8 bottom-0 border-l border-dashed border-zinc-800"
+								style:left={`${((month.getTime() - ganttData.start.getTime()) / (ganttData.end.getTime() - ganttData.start.getTime())) * 100}%`}
+							></div>
+						{/each}
+					</div>
+
+					<!-- Header: Months -->
+					<div class="mb-4 flex border-b border-zinc-800 pb-2 text-xs font-medium text-zinc-500 relative z-10">
+						<div class="relative flex-1 h-6">
+							{#each ganttData.months as month}
+								<div
+									class="absolute transform -translate-x-1/2 text-center"
+									style:left={`${((month.getTime() - ganttData.start.getTime()) / (ganttData.end.getTime() - ganttData.start.getTime())) * 100}%`}
+								>
+									{month.toLocaleDateString('en-US', { month: 'long' })}
+								</div>
+							{/each}
+						</div>
+					</div>
+
+					<!-- Projects -->
+					<div class="space-y-3">
+						{#each ganttData.projects as project}
+							<div class="group relative h-10 w-full hover:bg-zinc-800/30 rounded transition-colors">
+								<div
+									class="absolute top-1 flex flex-col gap-1"
+									style={getGanttStyle(project, ganttData.start, ganttData.end)}
+								>
+									<div
+										class="h-2 w-full rounded-full shadow-sm transition-all hover:brightness-110 {project.colour && !project.colour.startsWith('#')
+											? project.colour
+											: 'bg-indigo-600'}"
+										style:background-color={project.colour && project.colour.startsWith('#')
+											? project.colour
+											: undefined}
+									></div>
+									<span class="text-[10px] text-zinc-400 font-medium whitespace-nowrap px-0.5">
+										{project.name}
+									</span>
+								</div>
+							</div>
+						{/each}
+						{#if ganttData.projects.length === 0}
+							<div class="p-4 text-center text-zinc-500">
+								No projects with dates to display.
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </section>
