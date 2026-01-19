@@ -12,7 +12,7 @@
 	import AxisX from '$lib/components/chart/AxisX.svelte';
 	import AxisY from '$lib/components/chart/AxisY.svelte';
 	import SharedTooltip from '$lib/components/chart/SharedTooltip.svelte';
-	import { showAlert } from '$lib/alertStore.svelte';
+	import { showAlert, alertState } from '$lib/alertStore.svelte';
 
 	let { data } = $props();
 	let session = $state<Session | null>(null);
@@ -409,13 +409,15 @@
 			</div>
 		</div>
 
-		<button
-			onclick={() => (isModalOpen = true)}
-			class="fixed right-8 bottom-8 z-50 rounded-full bg-indigo-600 p-4 text-white shadow-lg transition-transform hover:scale-105 hover:bg-indigo-500"
-			aria-label="Create New Entry"
-		>
-			<Plus class="h-6 w-6" />
-		</button>
+		{#if !isModalOpen && !alertState.isOpen}
+			<button
+				onclick={() => (isModalOpen = true)}
+				class="fixed right-8 bottom-8 z-50 rounded-full bg-indigo-600 p-4 text-white shadow-lg transition-transform hover:scale-105 hover:bg-indigo-500"
+				aria-label="Create New Entry"
+			>
+				<Plus class="h-6 w-6" />
+			</button>
+		{/if}
 
 		<EntryModal
 			isOpen={isModalOpen}

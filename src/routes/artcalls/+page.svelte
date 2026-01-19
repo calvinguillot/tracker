@@ -4,7 +4,7 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { Loader, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
 	import ArtCallModal from '$lib/components/ArtCallModal.svelte';
-	import { showAlert, showConfirm } from '$lib/alertStore.svelte';
+	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 
 	type ArtCall = {
 		id: number;
@@ -33,7 +33,7 @@
 	let currentEntry = $state<ArtCall | null>(null);
 
 	// Sorting state
-	type SortField = 'name' | 'funds' | 'deadline';
+	type SortField = 'name' | 'funds' | 'deadline' | 'created' | 'status';
 	let sortField = $state<SortField>('deadline');
 	let sortDirection = $state<'asc' | 'desc'>('asc');
 
@@ -60,6 +60,14 @@
 						? Infinity
 						: -Infinity;
 				return (dateA - dateB) * modifier;
+			} else if (sortField === 'created') {
+				const dateA = new Date(a.created_at).getTime();
+				const dateB = new Date(b.created_at).getTime();
+				return (dateA - dateB) * modifier;
+			} else if (sortField === 'status') {
+				const statusA = getStatus(a.deadline).isOpen ? 0 : 1;
+				const statusB = getStatus(b.deadline).isOpen ? 0 : 1;
+				return (statusA - statusB) * modifier;
 			}
 			return 0;
 		})
@@ -182,7 +190,8 @@
 				label: 'Open',
 				color: 'bg-emerald-500',
 				bg: 'bg-emerald-500/10',
-				text: 'text-emerald-400'
+				text: 'text-emerald-400',
+				isOpen: true
 			};
 		}
 
@@ -201,9 +210,16 @@
 					label: 'Open',
 					color: 'bg-emerald-500',
 					bg: 'bg-emerald-500/10',
-					text: 'text-emerald-400'
+					text: 'text-emerald-400',
+					isOpen: true
 				}
-			: { label: 'Closed', color: 'bg-red-500', bg: 'bg-red-500/10', text: 'text-red-400' };
+			: {
+					label: 'Closed',
+					color: 'bg-red-500',
+					bg: 'bg-red-500/10',
+					text: 'text-red-400',
+					isOpen: false
+				};
 	}
 </script>
 
@@ -217,7 +233,7 @@
 <section class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h2 class="text-lg font-bold text-zinc-100">Art Calls</h2>
-		{#if session}
+		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
 				class="fixed right-8 bottom-8 z-50 rounded-full bg-indigo-600 p-4 text-white shadow-lg transition-transform hover:scale-105 hover:bg-indigo-500"
@@ -244,7 +260,7 @@
 		<!-- Sorting Controls -->
 		<div class="mb-4 flex flex-wrap items-center gap-4 text-sm">
 			<span class="text-zinc-500">Sort by:</span>
-			{#each ['name', 'funds', 'deadline'] as field}
+			{#each ['name', 'funds', 'deadline', 'created', 'status'] as field}
 				<button
 					class={`flex items-center gap-1 rounded-md px-3 py-1.5 transition-colors ${sortField === field ? 'bg-indigo-500/20 text-indigo-300' : 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800'}`}
 					onclick={() => toggleSort(field as SortField)}
@@ -265,31 +281,54 @@
 			{#each sortedArtCalls as call}
 				{@const status = getStatus(call.deadline)}
 				<li
-					class="group relative flex flex-col justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-all hover:border-zinc-700 hover:bg-zinc-900/80"
+					class={`group relative flex flex-col justify-between rounded-lg border p-4 transition-all ${
+						status.isOpen
+							? 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900/80'
+							: 'border-zinc-800/60 bg-zinc-900/30 hover:border-zinc-700/60 hover:bg-zinc-900/40'
+					}`}
 				>
 					<div class="flex flex-col gap-3">
 						<!-- Header: Name, Location, Status -->
 						<div class="flex items-start justify-between gap-3">
 							<div class="min-w-0 flex-1">
-								<h3 class="truncate text-base font-bold text-zinc-100" title={call.name}>
-									{call.name}
-								</h3>
-								<div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+								<div class="flex flex-wrap items-center gap-2">
+									<h3
+										class={`truncate text-base font-bold ${
+											status.isOpen ? 'text-zinc-100' : 'text-zinc-500'
+										}`}
+										title={call.name}
+									>
+										{call.name}
+									</h3>
+									<div
+										class={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${status.bg} ${status.text} border-transparent text-center`}
+									>
+										{status.label}
+									</div>
+								</div>
+								<div
+									class={`mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs ${
+										status.isOpen ? 'text-zinc-400' : 'text-zinc-500'
+									}`}
+								>
 									<span class="truncate">{call.location}</span>
 									<span class="text-zinc-600">•</span>
 									<span>{formatType(call.type)}</span>
 								</div>
 							</div>
-							<div class="flex flex-col items-end gap-1">
-								<div
-									class={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${status.bg} ${status.text} border-transparent text-center`}
-								>
-									{status.label}
-								</div>
+							<div class="flex items-center self-center">
 								{#if call.applied}
-									<span class="text-xs font-medium text-emerald-400">Applied</span>
+									<span
+										class="text-base font-normal text-emerald-400"
+										>Applied</span
+									>
 								{:else}
-									<span class="text-xs text-zinc-500">Not applied</span>
+									<span
+										class={`text-base font-normal ${
+											status.isOpen ? 'text-zinc-400' : 'text-zinc-500'
+										}`}
+										>Not applied</span
+									>
 								{/if}
 							</div>
 						</div>
@@ -303,21 +342,31 @@
 									<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
 										>Funds</span
 									>
-									<span class="text-sm font-medium text-emerald-400">{formatFunds(call.funds)}</span
+									<span
+										class={`text-sm font-medium ${
+											status.isOpen ? 'text-emerald-400' : 'text-zinc-500'
+										}`}
+										>{formatFunds(call.funds)}</span
 									>
 								</div>
 								<div class="flex flex-col gap-0.5">
 									<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
 										>Deadline</span
 									>
-									<span class="text-sm text-zinc-300">{formatDate(call.deadline)}</span>
+									<span class={`text-sm ${status.isOpen ? 'text-zinc-300' : 'text-zinc-500'}`}>
+										{formatDate(call.deadline)}
+									</span>
 								</div>
 							</div>
 
 							<div class="flex items-center gap-2">
 								{#if call.link}
 									<a
-										class="rounded-md bg-indigo-500/10 px-3 py-1.5 text-xs font-medium text-indigo-400 transition-colors hover:bg-indigo-500/20 hover:text-indigo-300"
+										class={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+											status.isOpen
+												? 'bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300'
+												: 'bg-zinc-800/60 text-zinc-500 hover:bg-zinc-800'
+										}`}
 										href={call.link}
 										target="_blank"
 										rel="noreferrer"

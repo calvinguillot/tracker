@@ -4,7 +4,7 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { Loader, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
 	import ProjectModal from '$lib/components/ProjectModal.svelte';
-	import { showAlert, showConfirm } from '$lib/alertStore.svelte';
+	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 
 	type Project = {
 		id: number;
@@ -189,7 +189,7 @@
 <section class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h2 class="text-lg font-bold text-zinc-100">Projects</h2>
-		{#if session}
+		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
 				class="fixed right-8 bottom-8 z-50 rounded-full bg-indigo-600 p-4 text-white shadow-lg transition-transform hover:scale-105 hover:bg-indigo-500"

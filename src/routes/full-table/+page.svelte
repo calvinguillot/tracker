@@ -5,7 +5,7 @@
 	import { onMount, untrack } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { Plus, Loader } from 'lucide-svelte';
-	import { showAlert, showConfirm } from '$lib/alertStore.svelte';
+	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 
 	let { data } = $props();
 	let trackingData = $state<any[]>(untrack(() => data.dailyTracking));
@@ -131,7 +131,7 @@
 <div>
 	<div class="mb-6 flex items-center justify-between">
 		<h2 class="text-lg font-bold text-zinc-100">Full Table</h2>
-		{#if session}
+		{#if session && !isModalOpen && !isViewModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
 				class="fixed right-8 bottom-8 z-50 rounded-full bg-indigo-600 p-4 text-white shadow-lg transition-transform hover:scale-105 hover:bg-indigo-500"
