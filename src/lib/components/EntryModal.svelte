@@ -1,5 +1,13 @@
 <script lang="ts">
-	let { isOpen, entry, onClose, onSave } = $props();
+	import { supabase } from '$lib/supabaseClient';
+	import { processImage } from '$lib/utils/image';
+	import { showAlert } from '$lib/alertStore.svelte';
+
+	let { isOpen, entry, onClose, onSave, userId } = $props();
+
+	let isUploading = $state(false);
+	let imageFile = $state<File | null>(null);
+	let imagePreview = $state<string | null>(null);
 
 	let formData = $state({
 		created_at: new Date().toISOString().split('T')[0],
@@ -22,7 +30,8 @@
 		call_family: false,
 		cry: false,
 		sex: false,
-		notes: ''
+		notes: '',
+		image: null
 	});
 
 	$effect(() => {
@@ -51,8 +60,11 @@
 					call_family: entry.call_family ?? false,
 					cry: entry.cry ?? false,
 					sex: entry.sex ?? false,
-					notes: entry.notes ?? ''
+					notes: entry.notes ?? '',
+					image: entry.image ?? null
 				};
+				imageFile = null;
+				imagePreview = null;
 			} else {
 				// Reset
 				formData = {
@@ -76,16 +88,76 @@
 					call_family: false,
 					cry: false,
 					sex: false,
-					dreams_type: '',
-					notes: ''
+					notes: '',
+					image: null
 				};
+				imageFile = null;
+				imagePreview = null;
 			}
 		}
 	});
 
-	function handleSubmit(e: Event) {
+	async function handleFileChange(e: Event) {
+		const target = e.target as HTMLInputElement;
+		if (target.files && target.files.length > 0) {
+			imageFile = target.files[0];
+			imagePreview = URL.createObjectURL(imageFile);
+		}
+	}
+
+	async function handleRemoveImage() {
+		if (formData.image) {
+			const { error } = await supabase.storage
+				.from('dailyPicture')
+				.remove([formData.image]);
+			
+			if (error) {
+				showAlert('Failed to delete image: ' + error.message, 'Error');
+				return;
+			}
+			
+			formData.image = null;
+			imageFile = null;
+			imagePreview = null;
+			showAlert('Image deleted successfully', 'Success');
+		}
+	}
+
+	async function handleSubmit(e: Event) {
 		e.preventDefault();
-		onSave(formData);
+		
+		let imagePath: string | null = formData.image;
+
+		if (imageFile) {
+			if (!userId) {
+				showAlert('User ID is missing, cannot upload image', 'Error');
+				return;
+			}
+
+			isUploading = true;
+			try {
+				const processedBlob = await processImage(imageFile);
+				const fileName = `${userId}/${formData.created_at}.webp`;
+
+				const { data, error } = await supabase.storage
+					.from('dailyPicture')
+					.upload(fileName, processedBlob, {
+						contentType: 'image/webp',
+						upsert: true
+					});
+
+				if (error) throw error;
+				
+				imagePath = data.path;
+			} catch (error: any) {
+				showAlert(`Image upload failed: ${error.message}`, 'Error');
+				isUploading = false;
+				return;
+			}
+			isUploading = false;
+		}
+
+		onSave({ ...formData, image: imagePath });
 	}
 
 	function handleBackgroundClick(e: MouseEvent) {
@@ -177,7 +249,7 @@
 							<input
 								type="number"
 								id={metric}
-								bind:value={formData[metric]}
+								bind:value={formData[metric as keyof typeof formData]}
 								class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 							/>
 						</div>
@@ -252,11 +324,39 @@
 							<input
 								type="text"
 								id={field}
-								bind:value={formData[field]}
+								bind:value={formData[field as keyof typeof formData]}
 								class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 							/>
 						</div>
 					{/each}
+				</div>
+
+				<!-- Image -->
+				<div>
+					<label for="image" class="mb-1 block text-sm font-medium text-zinc-400">Image</label>
+					<div class="flex items-center gap-4">
+						<input
+							type="file"
+							id="image"
+							accept="image/*"
+							onchange={handleFileChange}
+							class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+						/>
+						{#if imagePreview}
+							<p class="text-sm text-green-400">New image selected</p>
+						{:else if formData.image}
+							<div class="flex items-center gap-2">
+								<p class="text-sm text-zinc-400">Current image set</p>
+								<button
+									type="button"
+									onclick={handleRemoveImage}
+									class="text-xs text-red-400 hover:text-red-300"
+								>
+									Remove
+								</button>
+							</div>
+						{/if}
+					</div>
 				</div>
 
 				<!-- Notes -->
@@ -276,13 +376,15 @@
 					<button
 						type="button"
 						onclick={onClose}
-						class="rounded-md bg-zinc-800 px-3.5 py-2.5 text-sm font-semibold text-zinc-200 shadow-sm ring-1 ring-zinc-700 ring-inset hover:bg-zinc-700"
+						disabled={isUploading}
+						class="rounded-md bg-zinc-800 px-3.5 py-2.5 text-sm font-semibold text-zinc-200 shadow-sm ring-1 ring-zinc-700 ring-inset hover:bg-zinc-700 disabled:opacity-50"
 						>Cancel</button
 					>
 					<button
 						type="submit"
-						class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-						>Save</button
+						disabled={isUploading}
+						class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
+						>{isUploading ? 'Uploading...' : 'Save'}</button
 					>
 				</div>
 			</form>

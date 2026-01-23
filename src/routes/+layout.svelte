@@ -3,9 +3,21 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
-	import { LogOut, Table, LayoutDashboard, Palette, Menu, X, Folder, StickyNote, CheckSquare } from 'lucide-svelte';
+	import {
+		LogOut,
+		Table,
+		LayoutDashboard,
+		Palette,
+		Menu,
+		X,
+		Folder,
+		StickyNote,
+		CheckSquare,
+		Settings
+	} from 'lucide-svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import AlertModal from '$lib/components/AlertModal.svelte';
+	import { settings } from '$lib/settingsStore.svelte';
 
 	let { children } = $props();
 	let session = $state<Session | null>(null);
@@ -14,12 +26,14 @@
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
+			if (s) settings.init();
 		});
 
 		const {
 			data: { subscription }
 		} = supabase.auth.onAuthStateChange((_event, _session) => {
 			session = _session;
+			if (_session) settings.init();
 		});
 
 		return () => subscription.unsubscribe();
@@ -111,6 +125,13 @@
 				</nav>
 
 				<div class="hidden items-center justify-end gap-4 justify-self-end md:flex">
+					<a
+						href="{base}/settings"
+						class="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-800/50 hover:text-indigo-400"
+						aria-label="Settings"
+					>
+						<Settings class="h-6 w-6" />
+					</a>
 					<button
 						onclick={signOut}
 						class="rounded-full p-2 text-red-500 transition-colors hover:bg-zinc-800/50 hover:text-red-400"
@@ -196,6 +217,14 @@
 				>
 					<StickyNote class="h-5 w-5" />
 					<span class="font-medium">Notes</span>
+				</a>
+				<a
+					href="{base}/settings"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					onclick={() => (isMobileMenuOpen = false)}
+				>
+					<Settings class="h-5 w-5" />
+					<span class="font-medium">Settings</span>
 				</a>
 				<div class="my-2 border-t border-zinc-800"></div>
 				<button

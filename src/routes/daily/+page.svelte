@@ -125,7 +125,8 @@
 		'call_family',
 		'cry',
 		'sex',
-		'notes'
+		'notes',
+		'image'
 	];
 </script>
 
@@ -180,7 +181,7 @@
 							>
 								<button
 									onclick={() => openView(entry)}
-									class="text-zinc-400 transition-colors hover:text-zinc-200 md:hidden"
+									class="text-zinc-400 transition-colors hover:text-zinc-200"
 									aria-label="View Details"
 								>
 									<svg
@@ -252,6 +253,8 @@
 								>
 									{#if typeof entry[col] === 'boolean'}
 										{entry[col] ? 'Yes' : 'No'}
+									{:else if col === 'image'}
+										{entry[col] ? 'Yes' : 'No'}
 									{:else}
 										{entry[col] ?? '-'}
 									{/if}
@@ -269,6 +272,7 @@
 	<EntryModal
 		isOpen={isModalOpen}
 		entry={currentEntry}
+		userId={session?.user?.id}
 		onClose={() => (isModalOpen = false)}
 		onSave={handleSave}
 	/>

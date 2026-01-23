@@ -125,7 +125,7 @@
 	let activityStats = $derived.by(() => {
 		const stats = {
 			exercise: { label: 'Exercise', count: 0, icon: '🏃' },
-			ihana: { label: 'Ihana', count: 0, icon: '💜' },
+			ihana: { label: 'Ihana', count: 0, icon: '❤️' },
 			calvin_day: { label: 'Calvin Day', count: 0, icon: '✨' },
 			sickness: { label: 'Sick Days', count: 0, icon: '🤒' },
 			work: { label: 'Work', count: 0, icon: '💼' },
@@ -136,7 +136,7 @@
 			leisure: { label: 'Leisure', count: 0, icon: '🎮' },
 			call_family: { label: 'Family Calls', count: 0, icon: '📞' },
 			cry: { label: 'Cry', count: 0, icon: '😢' },
-			sex: { label: 'Sex', count: 0, icon: '❤️' }
+			sex: { label: 'Sex', count: 0, icon: '💌' }
 		};
 
 		// Filter data based on toggle

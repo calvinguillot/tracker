@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settings } from '$lib/settingsStore.svelte';
 	let { isOpen, entry, onClose, onSave } = $props();
 
 	let formData = $state({
@@ -135,11 +136,9 @@
 							class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 						>
 							<option value={null}>Select Type</option>
-							<option value={1}>Open Call</option>
-							<option value={2}>Residency</option>
-							<option value={3}>Grant</option>
-							<option value={4}>Job Offer</option>
-							<option value={5}>Other</option>
+							{#each settings.settings.calls_types as type}
+								<option value={type.id}>{type.label}</option>
+							{/each}
 						</select>
 					</div>
 
@@ -200,7 +199,8 @@
 							bind:checked={formData.applied}
 							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
 						/>
-						<label for="applied" class="ml-2 block text-sm font-medium text-zinc-300">Applied</label>
+						<label for="applied" class="ml-2 block text-sm font-medium text-zinc-300">Applied</label
+						>
 					</div>
 
 					<!-- Group Toggle -->

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settings } from '$lib/settingsStore.svelte';
 	let { isOpen, entry, onClose, onSave } = $props();
 
 	let formData = $state({
@@ -109,14 +110,16 @@
 				<!-- Color Picker -->
 				<div>
 					<label for="color" class="mb-1 block text-sm font-medium text-zinc-400">Color</label>
-					<div class="flex gap-2">
-						{#each ['#18181b', '#7f1d1d', '#7c2d12', '#78350f', '#365314', '#064e3b', '#134e4a', '#0c4a6e', '#1e3a8a', '#312e81', '#4c1d95', '#701a75', '#831843'] as color}
+					<div class="flex flex-wrap gap-2">
+						{#each settings.settings.notes_types as type}
 							<button
 								type="button"
-								class="h-8 w-8 rounded-full border border-zinc-700 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-								style="background-color: {color}; {formData.color === color ? 'border-color: white; transform: scale(1.1);' : ''}"
-								onclick={() => (formData.color = color)}
-								aria-label="Select color {color}"
+								class="h-8 w-8 rounded-full border border-zinc-700 transition-transform hover:scale-110 focus:ring-2 focus:ring-zinc-400 focus:outline-none"
+								style="background-color: {type.color}; {formData.color === type.color
+									? 'border-color: white; transform: scale(1.1);'
+									: ''}"
+								onclick={() => (formData.color = type.color)}
+								aria-label="Select color {type.color}"
 							></button>
 						{/each}
 					</div>

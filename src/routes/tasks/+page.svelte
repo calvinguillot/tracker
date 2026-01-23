@@ -5,6 +5,7 @@
 	import { Loader, Plus, ArrowUp, ArrowDown, ListChecks } from 'lucide-svelte';
 	import TaskModal from '$lib/components/TaskModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
+	import { settings } from '$lib/settingsStore.svelte';
 
 	type Task = {
 		id: number;
@@ -49,12 +50,8 @@
 						: -Infinity;
 				return (dateA - dateB) * modifier;
 			} else if (sortField === 'completed') {
-				const dateA = a.completed_at
-					? new Date(a.completed_at).getTime()
-					: 0; // treat null as oldest or newest?
-				const dateB = b.completed_at
-					? new Date(b.completed_at).getTime()
-					: 0;
+				const dateA = a.completed_at ? new Date(a.completed_at).getTime() : 0; // treat null as oldest or newest?
+				const dateB = b.completed_at ? new Date(b.completed_at).getTime() : 0;
 				return (dateA - dateB) * modifier;
 			} else if (sortField === 'created') {
 				const dateA = new Date(a.created_at).getTime();
@@ -176,18 +173,30 @@
 
 	function getStatusColor(status: string | null) {
 		switch (status) {
-			case 'todo': return { bg: 'bg-zinc-500/10', text: 'text-zinc-400', border: 'border-zinc-500/20' };
-			case 'in_progress': return { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20' };
-			case 'done': return { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' };
-			case 'archived': return { bg: 'bg-zinc-800', text: 'text-zinc-500', border: 'border-zinc-700' };
-			default: return { bg: 'bg-zinc-500/10', text: 'text-zinc-400', border: 'border-zinc-500/20' };
+			case 'todo':
+				return { bg: 'bg-zinc-500/10', text: 'text-zinc-400', border: 'border-zinc-500/20' };
+			case 'in_progress':
+				return { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20' };
+			case 'done':
+				return {
+					bg: 'bg-emerald-500/10',
+					text: 'text-emerald-400',
+					border: 'border-emerald-500/20'
+				};
+			case 'archived':
+				return { bg: 'bg-zinc-800', text: 'text-zinc-500', border: 'border-zinc-700' };
+			default:
+				return { bg: 'bg-zinc-500/10', text: 'text-zinc-400', border: 'border-zinc-500/20' };
 		}
 	}
-    
-    function getStatusLabel(status: string | null) {
-        if (!status) return 'Unknown';
-        return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    }
+
+	function getStatusLabel(status: string | null) {
+		if (!status) return 'Unknown';
+		return status
+			.split('_')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
+	}
 </script>
 
 <TaskModal
@@ -242,7 +251,7 @@
 					{/if}
 				</button>
 			{/each}
-            <span class="ml-auto text-xs text-zinc-500">
+			<span class="ml-auto text-xs text-zinc-500">
 				Total: {tasks.length}
 			</span>
 		</div>
@@ -251,7 +260,7 @@
 			{#each sortedTasks as task}
 				{@const statusStyle = getStatusColor(task.status)}
 				<li
-					class={`group relative flex flex-col justify-between rounded-lg border p-4 transition-all hover:bg-zinc-900/80 ${statusStyle.border} bg-zinc-900/40`}
+					class="group relative flex flex-col justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-all hover:border-zinc-700 hover:bg-zinc-900/80"
 				>
 					<div class="flex flex-col gap-3">
 						<!-- Header: Title, Status -->
@@ -259,48 +268,47 @@
 							<div class="min-w-0 flex-1">
 								<div class="flex flex-wrap items-center gap-2">
 									{#if task.color}
-										<div 
-											class="h-3 w-3 rounded-full" 
+										<div
+											class="h-3 w-3 rounded-full"
 											style="background-color: {task.color}"
 											title="Task Color"
 										></div>
 									{/if}
-									<h3
-										class="truncate text-base font-bold text-zinc-100"
-										title={task.title}
-									>
+									<h3 class="truncate text-base font-bold text-zinc-100" title={task.title}>
 										{task.title}
 									</h3>
-                                    
 								</div>
-                                <div class="mt-1 flex items-center gap-2 text-xs">
-                                    <div
+								<div class="mt-1 flex items-center gap-2 text-xs">
+									<div
 										class={`shrink-0 rounded-full px-2 py-0.5 font-medium ${statusStyle.bg} ${statusStyle.text}`}
 									>
 										{getStatusLabel(task.status)}
 									</div>
-                                    {#if task.type}
-                                        <span class="text-zinc-500">•</span>
-                                        <span class="text-zinc-400">{task.type}</span>
-                                    {/if}
+									{#if task.type}
+										<span class="text-zinc-500">•</span>
+										<span class="text-zinc-400"
+											>{settings.getTaskType(task.type)?.label ?? task.type}</span
+										>
+									{/if}
 									{#if task.checklist && task.checklist.length > 0}
 										<span class="text-zinc-500">•</span>
 										<ListChecks class="h-4 w-4 text-zinc-400" />
 										<span class="text-xs text-zinc-500">
-											{task.checklist.filter((i: any) => i.completed).length}/{task.checklist.length}
+											{task.checklist.filter((i: any) => i.completed).length}/{task.checklist
+												.length}
 										</span>
 									{/if}
-                                </div>
+								</div>
 							</div>
 						</div>
 
-                        <!-- Body Snippet -->
-                        {#if task.body}
-                            <p class="text-sm text-zinc-400 line-clamp-3">
-                                {task.body}
-                            </p>
-                        {/if}
-                        
+						<!-- Body Snippet -->
+						{#if task.body}
+							<p class="line-clamp-3 text-sm text-zinc-400">
+								{task.body}
+							</p>
+						{/if}
+
 						<!-- Details Row -->
 						<div
 							class="mt-2 flex items-center justify-between gap-4 border-t border-zinc-800/50 pt-3"
@@ -314,16 +322,16 @@
 										{formatDate(task.deadline_at)}
 									</span>
 								</div>
-                                {#if task.completed_at}
-                                    <div class="flex flex-col gap-0.5">
-                                        <span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
-                                            >Completed</span
-                                        >
-                                        <span class="text-xs text-emerald-400">
-                                            {formatDate(task.completed_at)}
-                                        </span>
-                                    </div>
-                                {/if}
+								{#if task.completed_at}
+									<div class="flex flex-col gap-0.5">
+										<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
+											>Completed</span
+										>
+										<span class="text-xs text-emerald-400">
+											{formatDate(task.completed_at)}
+										</span>
+									</div>
+								{/if}
 							</div>
 
 							<div class="flex items-center gap-2">

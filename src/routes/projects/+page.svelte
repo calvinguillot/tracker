@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import { Loader, Plus, ArrowUp, ArrowDown, List, Calendar } from 'lucide-svelte';
+	import { settings } from '$lib/settingsStore.svelte';
 	import ProjectModal from '$lib/components/ProjectModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 
@@ -17,6 +18,7 @@
 		start_at: string | null;
 		end_at: string | null;
 		colour: string | null;
+		type: number | null;
 	};
 
 	const statusLabels: Record<number, string> = {
@@ -317,6 +319,14 @@
 								</h3>
 								{#if project.description}
 									<p class="text-sm text-zinc-400">{project.description}</p>
+								{/if}
+								{#if project.type}
+									{@const t = settings.getProjectType(project.type)}
+									{#if t}
+										<div class="flex items-center gap-2 text-xs text-zinc-500">
+											<span class="font-medium text-zinc-400">{t.label}</span>
+										</div>
+									{/if}
 								{/if}
 							</div>
 

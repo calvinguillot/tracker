@@ -2,7 +2,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Loader, Plus, ArrowUp, ArrowDown, Trash2, Edit2 } from 'lucide-svelte';
+	import { Loader, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
 	import NoteModal from '$lib/components/NoteModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 
@@ -211,41 +211,66 @@
 		<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 			{#each sortedNotes as note}
 				<li
-					class="group relative flex flex-col justify-between overflow-hidden rounded-lg border border-zinc-800/50 transition-all hover:border-zinc-700 hover:shadow-lg"
+					class="group relative flex flex-col gap-4 rounded-lg border border-zinc-800 p-4 transition-all hover:border-zinc-700 hover:shadow-lg"
 					style="background-color: {note.color || '#18181b'}"
 				>
-					<div class="flex flex-col gap-3 p-4">
-						<div class="flex items-start justify-between gap-3">
-							<h3 class="text-lg font-bold text-zinc-100 break-words">
-								{note.title}
-							</h3>
-						</div>
+					<div class="flex flex-col gap-3">
+						<h3 class="text-lg font-bold text-zinc-100 break-words">
+							{note.title}
+						</h3>
 						
 						<div class="prose prose-invert prose-sm max-w-none text-zinc-300 break-words">
 							{@html formatBody(note.body)}
 						</div>
 					</div>
 
-					<!-- Actions Overlay (visible on hover or always on touch devices if we want, but hover for now) -->
-					<div class="absolute top-2 right-2 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-						<button
-							onclick={() => openEdit(note)}
-							class="rounded-full bg-black/50 p-2 text-indigo-400 hover:bg-black/70 hover:text-indigo-300 backdrop-blur-sm"
-							aria-label="Edit"
-						>
-							<Edit2 class="h-4 w-4" />
-						</button>
-						<button
-							onclick={() => handleDelete(note.id)}
-							class="rounded-full bg-black/50 p-2 text-red-400 hover:bg-black/70 hover:text-red-300 backdrop-blur-sm"
-							aria-label="Delete"
-						>
-							<Trash2 class="h-4 w-4" />
-						</button>
-					</div>
-					
-					<div class="p-4 pt-0 text-xs text-zinc-400/70 mt-auto">
-						{new Date(note.created_at).toLocaleDateString()}
+					<div class="flex items-center justify-between gap-4 border-t border-zinc-800/50 pt-3 mt-auto">
+						<div class="text-xs text-zinc-400/70">
+							{new Date(note.created_at).toLocaleDateString()}
+						</div>
+
+						<div class="flex items-center gap-2">
+							<button
+								onclick={() => openEdit(note)}
+								class="rounded-md p-2 text-indigo-400 transition-colors hover:bg-black/20 hover:text-indigo-300"
+								aria-label="Edit"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+									/>
+								</svg>
+							</button>
+							<button
+								onclick={() => handleDelete(note.id)}
+								class="rounded-md p-2 text-red-400 transition-colors hover:bg-black/20 hover:text-red-300"
+								aria-label="Delete"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+									/>
+								</svg>
+							</button>
+						</div>
 					</div>
 				</li>
 			{/each}

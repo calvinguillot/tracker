@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settings } from '$lib/settingsStore.svelte';
 	let { isOpen, entry, onClose, onSave } = $props();
 
 	let formData = $state({
@@ -6,6 +7,7 @@
 		description: '',
 		funds: null as number | null,
 		status: 0,
+		type: null as number | null,
 		percentage: 0,
 		start_at: '',
 		end_at: '',
@@ -20,6 +22,7 @@
 					description: entry.description || '',
 					funds: entry.funds,
 					status: entry.status ?? 0,
+					type: entry.type ?? null,
 					percentage: entry.percentage ?? 0,
 					start_at: entry.start_at ? new Date(entry.start_at).toISOString().split('T')[0] : '',
 					end_at: entry.end_at ? new Date(entry.end_at).toISOString().split('T')[0] : '',
@@ -32,6 +35,7 @@
 					description: '',
 					funds: null,
 					status: 0,
+					type: null,
 					percentage: 0,
 					start_at: '',
 					end_at: '',
@@ -40,6 +44,15 @@
 			}
 		}
 	});
+
+	function handleTypeChange() {
+		if (formData.type) {
+			const t = settings.getProjectType(formData.type);
+			if (t && t.color) {
+				formData.colour = t.color;
+			}
+		}
+	}
 
 	function handleSubmit(e: Event) {
 		e.preventDefault();
@@ -153,7 +166,7 @@
 					</div>
 				</div>
 
-				<!-- Percentage & Colour -->
+				<!-- Percentage & Type -->
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 					<div>
 						<label for="percentage" class="mb-1 block text-sm font-medium text-zinc-400"
@@ -170,28 +183,43 @@
 					</div>
 
 					<div>
-						<label for="colour" class="mb-1 block text-sm font-medium text-zinc-400">Color</label>
-						<select
-							id="colour"
-							bind:value={formData.colour}
-							class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-						>
-							<option value="bg-zinc-500">Zinc</option>
-							<option value="bg-red-600">Red</option>
-							<option value="bg-orange-600">Orange</option>
-							<option value="bg-amber-500">Amber</option>
-							<option value="bg-green-600">Green</option>
-							<option value="bg-emerald-500">Emerald</option>
-							<option value="bg-teal-500">Teal</option>
-							<option value="bg-cyan-500">Cyan</option>
-							<option value="bg-blue-600">Blue</option>
-							<option value="bg-indigo-600">Indigo</option>
-							<option value="bg-violet-600">Violet</option>
-							<option value="bg-purple-600">Purple</option>
-							<option value="bg-fuchsia-600">Fuchsia</option>
-							<option value="bg-pink-600">Pink</option>
-							<option value="bg-rose-600">Rose</option>
-						</select>
+						<label for="type" class="mb-1 block text-sm font-medium text-zinc-400">Type</label>
+						<div class="flex items-center gap-2">
+							<select
+								id="type"
+								bind:value={formData.type}
+								onchange={handleTypeChange}
+								class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+							>
+								<option value={null}>Select Type</option>
+								{#each settings.settings.project_types as t}
+									<option value={t.id}>{t.label}</option>
+								{/each}
+							</select>
+							{#if formData.colour}
+								<div
+									class="h-8 w-8 flex-shrink-0 rounded-full border border-zinc-600 shadow-sm"
+									style={formData.colour.startsWith('#')
+										? `background-color: ${formData.colour}`
+										: ''}
+									class:bg-zinc-500={formData.colour === 'bg-zinc-500'}
+									class:bg-red-600={formData.colour === 'bg-red-600'}
+									class:bg-orange-600={formData.colour === 'bg-orange-600'}
+									class:bg-amber-500={formData.colour === 'bg-amber-500'}
+									class:bg-green-600={formData.colour === 'bg-green-600'}
+									class:bg-emerald-500={formData.colour === 'bg-emerald-500'}
+									class:bg-teal-500={formData.colour === 'bg-teal-500'}
+									class:bg-cyan-500={formData.colour === 'bg-cyan-500'}
+									class:bg-blue-600={formData.colour === 'bg-blue-600'}
+									class:bg-indigo-600={formData.colour === 'bg-indigo-600'}
+									class:bg-violet-600={formData.colour === 'bg-violet-600'}
+									class:bg-purple-600={formData.colour === 'bg-purple-600'}
+									class:bg-fuchsia-600={formData.colour === 'bg-fuchsia-600'}
+									class:bg-pink-600={formData.colour === 'bg-pink-600'}
+									class:bg-rose-600={formData.colour === 'bg-rose-600'}
+								></div>
+							{/if}
+						</div>
 					</div>
 				</div>
 

@@ -5,6 +5,7 @@
 	import { Loader, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
 	import ArtCallModal from '$lib/components/ArtCallModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
+	import { settings } from '$lib/settingsStore.svelte';
 
 	type ArtCall = {
 		id: number;
@@ -18,14 +19,6 @@
 		applied: boolean;
 		group: boolean;
 		idea: string | null;
-	};
-
-	const typeLabels: Record<number, string> = {
-		1: 'Open Call',
-		2: 'Residency',
-		3: 'Grant',
-		4: 'Job Offer',
-		5: 'Other'
 	};
 
 	let session = $state<Session | null>(null);
@@ -190,7 +183,7 @@
 		}
 	}
 
-	const formatType = (value: number | null) => typeLabels[value ?? 0] ?? 'Unknown';
+	const formatType = (value: number | null) => settings.getCallTypeLabel(value);
 	const formatFunds = (value: number | null) => (value === null ? '—' : `€${value}`);
 	const formatDate = (value: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
 

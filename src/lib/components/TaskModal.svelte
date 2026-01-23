@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Trash2, Plus, ArrowUp, ArrowDown, CheckSquare, Square } from 'lucide-svelte';
+	import { settings } from '$lib/settingsStore.svelte';
 
 	let { isOpen, entry, onClose, onSave } = $props();
 
@@ -52,7 +53,7 @@
 
 	function handleSubmit(e: Event) {
 		e.preventDefault();
-		
+
 		// Handle completed_at logic
 		if (formData.status === 'done') {
 			if (!formData.completed_at) {
@@ -67,7 +68,7 @@
 			...formData,
 			deadline_at: formData.deadline_at || null
 		};
-		
+
 		onSave(payload);
 	}
 
@@ -107,7 +108,7 @@
 
 	function moveChecklistItem(index: number, direction: 'up' | 'down') {
 		if (!formData.checklist) return;
-		
+
 		const newIndex = direction === 'up' ? index - 1 : index + 1;
 		if (newIndex < 0 || newIndex >= formData.checklist.length) return;
 
@@ -116,6 +117,14 @@
 		newChecklist.splice(index, 1);
 		newChecklist.splice(newIndex, 0, item);
 		formData.checklist = newChecklist;
+	}
+	function handleTypeChange() {
+		if (formData.type) {
+			const t = settings.getTaskType(formData.type);
+			if (t && t.color) {
+				formData.color = t.color;
+			}
+		}
 	}
 </script>
 
@@ -174,31 +183,41 @@
 					<!-- Type -->
 					<div>
 						<label for="type" class="mb-1 block text-sm font-medium text-zinc-400">Type</label>
-						<input
-							type="text"
-							id="type"
-							bind:value={formData.type}
-							placeholder="e.g. Design, Dev, Admin"
-							class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-						/>
-					</div>
-
-					<!-- Color -->
-					<div>
-						<label for="color" class="mb-1 block text-sm font-medium text-zinc-400">Color</label>
-						<div class="flex gap-2">
-							<input
-								type="color"
-								id="color"
-								bind:value={formData.color}
-								class="h-10 w-20 cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 p-1"
-							/>
-							<input
-								type="text"
-								bind:value={formData.color}
+						<div class="flex items-center gap-2">
+							<select
+								id="type"
+								bind:value={formData.type}
+								onchange={handleTypeChange}
 								class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-								placeholder="#000000"
-							/>
+							>
+								<option value="">Select Type</option>
+								{#each settings.settings.task_types as t}
+									<option value={t.id}>{t.label}</option>
+								{/each}
+							</select>
+							{#if formData.color}
+								<div
+									class="h-8 w-8 flex-shrink-0 rounded-full border border-zinc-600 shadow-sm"
+									style={formData.color.startsWith('#')
+										? `background-color: ${formData.color}`
+										: ''}
+									class:bg-zinc-500={formData.color === 'bg-zinc-500'}
+									class:bg-red-600={formData.color === 'bg-red-600'}
+									class:bg-orange-600={formData.color === 'bg-orange-600'}
+									class:bg-amber-500={formData.color === 'bg-amber-500'}
+									class:bg-green-600={formData.color === 'bg-green-600'}
+									class:bg-emerald-500={formData.color === 'bg-emerald-500'}
+									class:bg-teal-500={formData.color === 'bg-teal-500'}
+									class:bg-cyan-500={formData.color === 'bg-cyan-500'}
+									class:bg-blue-600={formData.color === 'bg-blue-600'}
+									class:bg-indigo-600={formData.color === 'bg-indigo-600'}
+									class:bg-violet-600={formData.color === 'bg-violet-600'}
+									class:bg-purple-600={formData.color === 'bg-purple-600'}
+									class:bg-fuchsia-600={formData.color === 'bg-fuchsia-600'}
+									class:bg-pink-600={formData.color === 'bg-pink-600'}
+									class:bg-rose-600={formData.color === 'bg-rose-600'}
+								></div>
+							{/if}
 						</div>
 					</div>
 
