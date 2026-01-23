@@ -11,7 +11,6 @@
 		created_at: string;
 		name: string;
 		description: string | null;
-		requirements: string | null;
 		funds: number | null;
 		status: number;
 		percentage: number;
@@ -99,7 +98,7 @@
 		const totalDuration = end.getTime() - start.getTime();
 		const projectStart = new Date(project.start_at).getTime();
 		const projectEnd = new Date(project.end_at).getTime();
-		
+
 		const left = ((projectStart - start.getTime()) / totalDuration) * 100;
 		const width = ((projectEnd - projectStart) / totalDuration) * 100;
 
@@ -305,134 +304,127 @@
 
 		{#if viewMode === 'list'}
 			<ul class="grid grid-cols-1 gap-4">
-			{#each sortedProjects as project}
-				<li
-					class="group relative flex flex-col gap-4 rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-all hover:border-zinc-700 hover:bg-zinc-900/80"
-				>
-					<!-- Row 1: Info & Progress -->
-					<div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-						<!-- Content Left -->
-						<div class="flex min-w-0 flex-1 flex-col gap-2">
-							<h3 class="truncate text-base font-bold text-zinc-100" title={project.name}>
-								{project.name}
-							</h3>
-							{#if project.description}
-								<p class="text-sm text-zinc-400">{project.description}</p>
-							{/if}
-							{#if project.requirements}
-								<p
-									class="mt-1 font-mono text-xs break-words whitespace-normal text-zinc-500 md:max-w-[50%]"
-								>
-									<span class="font-bold text-zinc-600">REQ:</span>
-									{project.requirements}
-								</p>
-							{/if}
-						</div>
-
-						<!-- Content Right (Progress) -->
-						<div class="flex w-full shrink-0 flex-col gap-2 md:w-56">
-							<div class="flex justify-end">
-								<span class={`rounded-full px-2 py-0.5 text-xs ${getStatusClasses(project.status)}`}
-									>{getStatusLabel(project.status)}</span
-								>
-							</div>
-							<div class="flex items-center justify-between">
-								<span class="text-xs font-medium text-zinc-400">Progress</span>
-								<span class="text-xs text-zinc-500">{project.percentage || 0}%</span>
-							</div>
-							<div class="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-								<div
-									class="h-full rounded-full transition-all duration-500 {project.colour &&
-									!project.colour.startsWith('#')
-										? project.colour
-										: ''}"
-									style:width="{project.percentage || 0}%"
-									style:background-color={project.colour && project.colour.startsWith('#')
-										? project.colour
-										: ''}
-								></div>
-							</div>
-						</div>
-					</div>
-
-					<!-- Row 2: Funds/Dates & Actions -->
-					<div
-						class="flex flex-wrap items-end justify-between gap-4 border-t border-zinc-800/50 pt-3"
+				{#each sortedProjects as project}
+					<li
+						class="group relative flex flex-col gap-4 rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-all hover:border-zinc-700 hover:bg-zinc-900/80"
 					>
-						<!-- Funds & Dates -->
-						<div class="flex items-center gap-6">
-							<div class="flex flex-col gap-0.5">
-								<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
-									>Funds</span
-								>
-								<span class="text-sm font-medium text-emerald-400"
-									>{formatFunds(project.funds)}</span
-								>
+						<!-- Row 1: Info & Progress -->
+						<div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+							<!-- Content Left -->
+							<div class="flex min-w-0 flex-1 flex-col gap-2">
+								<h3 class="truncate text-base font-bold text-zinc-100" title={project.name}>
+									{project.name}
+								</h3>
+								{#if project.description}
+									<p class="text-sm text-zinc-400">{project.description}</p>
+								{/if}
 							</div>
-							{#if project.start_at || project.end_at}
-								<div class="flex flex-col gap-0.5">
-									<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
-										>Dates</span
-									>
-									<span class="text-sm text-zinc-300"
-										>{formatDate(project.start_at)} - {formatDate(project.end_at)}</span
+
+							<!-- Content Right (Progress) -->
+							<div class="flex w-full shrink-0 flex-col gap-2 md:w-56">
+								<div class="flex justify-end">
+									<span
+										class={`rounded-full px-2 py-0.5 text-xs ${getStatusClasses(project.status)}`}
+										>{getStatusLabel(project.status)}</span
 									>
 								</div>
-							{/if}
+								<div class="flex items-center justify-between">
+									<span class="text-xs font-medium text-zinc-400">Progress</span>
+									<span class="text-xs text-zinc-500">{project.percentage || 0}%</span>
+								</div>
+								<div class="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+									<div
+										class="h-full rounded-full transition-all duration-500 {project.colour &&
+										!project.colour.startsWith('#')
+											? project.colour
+											: ''}"
+										style:width="{project.percentage || 0}%"
+										style:background-color={project.colour && project.colour.startsWith('#')
+											? project.colour
+											: ''}
+									></div>
+								</div>
+							</div>
 						</div>
 
-						<!-- Buttons -->
-						<div class="flex items-center gap-2">
-							<button
-								onclick={() => openEdit(project)}
-								class="rounded-md p-2 text-indigo-400 transition-colors hover:bg-zinc-800 hover:text-indigo-300"
-								aria-label="Edit"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-5 w-5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
+						<!-- Row 2: Funds/Dates & Actions -->
+						<div
+							class="flex flex-wrap items-end justify-between gap-4 border-t border-zinc-800/50 pt-3"
+						>
+							<!-- Funds & Dates -->
+							<div class="flex items-center gap-6">
+								<div class="flex flex-col gap-0.5">
+									<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
+										>Funds</span
+									>
+									<span class="text-sm font-medium text-emerald-400"
+										>{formatFunds(project.funds)}</span
+									>
+								</div>
+								{#if project.start_at || project.end_at}
+									<div class="flex flex-col gap-0.5">
+										<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
+											>Dates</span
+										>
+										<span class="text-sm text-zinc-300"
+											>{formatDate(project.start_at)} - {formatDate(project.end_at)}</span
+										>
+									</div>
+								{/if}
+							</div>
+
+							<!-- Buttons -->
+							<div class="flex items-center gap-2">
+								<button
+									onclick={() => openEdit(project)}
+									class="rounded-md p-2 text-indigo-400 transition-colors hover:bg-zinc-800 hover:text-indigo-300"
+									aria-label="Edit"
 								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-									/>
-								</svg>
-							</button>
-							<button
-								onclick={() => handleDelete(project.id)}
-								class="rounded-md p-2 text-red-400 transition-colors hover:bg-zinc-800 hover:text-red-300"
-								aria-label="Delete"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-5 w-5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-5 w-5"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+										/>
+									</svg>
+								</button>
+								<button
+									onclick={() => handleDelete(project.id)}
+									class="rounded-md p-2 text-red-400 transition-colors hover:bg-zinc-800 hover:text-red-300"
+									aria-label="Delete"
 								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-									/>
-								</svg>
-							</button>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-5 w-5"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+										/>
+									</svg>
+								</button>
+							</div>
 						</div>
-					</div>
-				</li>
-			{/each}
-		</ul>
+					</li>
+				{/each}
+			</ul>
 		{:else}
 			<div class="w-full overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-				<div class="min-w-[800px] relative">
+				<div class="relative min-w-[800px]">
 					<!-- Vertical Grid Lines -->
-					<div class="absolute inset-0 pointer-events-none">
+					<div class="pointer-events-none absolute inset-0">
 						{#each ganttData.months as month}
 							<div
 								class="absolute top-8 bottom-0 border-l border-dashed border-zinc-800"
@@ -442,11 +434,13 @@
 					</div>
 
 					<!-- Header: Months -->
-					<div class="mb-4 flex border-b border-zinc-800 pb-2 text-xs font-medium text-zinc-500 relative z-10">
-						<div class="relative flex-1 h-6">
+					<div
+						class="relative z-10 mb-4 flex border-b border-zinc-800 pb-2 text-xs font-medium text-zinc-500"
+					>
+						<div class="relative h-6 flex-1">
 							{#each ganttData.months as month}
 								<div
-									class="absolute transform -translate-x-1/2 text-center"
+									class="absolute -translate-x-1/2 transform text-center"
 									style:left={`${((month.getTime() - ganttData.start.getTime()) / (ganttData.end.getTime() - ganttData.start.getTime())) * 100}%`}
 								>
 									{month.toLocaleDateString('en-US', { month: 'long' })}
@@ -458,29 +452,30 @@
 					<!-- Projects -->
 					<div class="space-y-3">
 						{#each ganttData.projects as project}
-							<div class="group relative h-10 w-full hover:bg-zinc-800/30 rounded transition-colors">
+							<div
+								class="group relative h-10 w-full rounded transition-colors hover:bg-zinc-800/30"
+							>
 								<div
 									class="absolute top-1 flex flex-col gap-1"
 									style={getGanttStyle(project, ganttData.start, ganttData.end)}
 								>
 									<div
-										class="h-2 w-full rounded-full shadow-sm transition-all hover:brightness-110 {project.colour && !project.colour.startsWith('#')
+										class="h-2 w-full rounded-full shadow-sm transition-all hover:brightness-110 {project.colour &&
+										!project.colour.startsWith('#')
 											? project.colour
 											: 'bg-indigo-600'}"
 										style:background-color={project.colour && project.colour.startsWith('#')
 											? project.colour
 											: undefined}
 									></div>
-									<span class="text-[10px] text-zinc-400 font-medium whitespace-nowrap px-0.5">
+									<span class="px-0.5 text-[10px] font-medium whitespace-nowrap text-zinc-400">
 										{project.name}
 									</span>
 								</div>
 							</div>
 						{/each}
 						{#if ganttData.projects.length === 0}
-							<div class="p-4 text-center text-zinc-500">
-								No projects with dates to display.
-							</div>
+							<div class="p-4 text-center text-zinc-500">No projects with dates to display.</div>
 						{/if}
 					</div>
 				</div>

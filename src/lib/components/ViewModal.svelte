@@ -111,11 +111,25 @@
 							Call Family
 						</span>
 					{/if}
+					{#if entry.cry}
+						<span
+							class="inline-flex items-center rounded-full border border-blue-900/50 bg-blue-900/30 px-2.5 py-0.5 text-xs font-medium text-blue-400"
+						>
+							Cry
+						</span>
+					{/if}
+					{#if entry.sex}
+						<span
+							class="inline-flex items-center rounded-full border border-red-900/50 bg-red-900/30 px-2.5 py-0.5 text-xs font-medium text-red-400"
+						>
+							Sex
+						</span>
+					{/if}
 				</div>
 
 				<!-- Text Fields -->
 				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-					{#each ['work_type', 'study_type', 'culture_type', 'art_type', 'music_type', 'exercise_type', 'leisure_type', 'dreams_type'] as field}
+					{#each ['work_type', 'study_type', 'culture_type', 'art_type', 'music_type', 'exercise_type', 'leisure_type'] as field}
 						{#if entry[field]}
 							<div>
 								<h3 class="mb-1 text-sm font-medium text-zinc-400 capitalize">

@@ -8,7 +8,9 @@
 		funds: null as number | null,
 		deadline: '',
 		link: '',
-		applied: false
+		applied: false,
+		group: false,
+		idea: ''
 	});
 
 	$effect(() => {
@@ -21,7 +23,9 @@
 					funds: entry.funds,
 					deadline: entry.deadline ? new Date(entry.deadline).toISOString().split('T')[0] : '',
 					link: entry.link || '',
-					applied: entry.applied || false
+					applied: entry.applied || false,
+					group: entry.group || false,
+					idea: entry.idea || ''
 				};
 			} else {
 				// Reset
@@ -32,7 +36,9 @@
 					funds: null,
 					deadline: '',
 					link: '',
-					applied: false
+					applied: false,
+					group: false,
+					idea: ''
 				};
 			}
 		}
@@ -162,7 +168,7 @@
 					/>
 				</div>
 
-					<!-- Link -->
+				<!-- Link -->
 				<div>
 					<label for="link" class="mb-1 block text-sm font-medium text-zinc-400">Link</label>
 					<input
@@ -174,15 +180,39 @@
 					/>
 				</div>
 
-				<!-- Applied Toggle -->
-				<div class="flex items-center">
-					<input
-						type="checkbox"
-						id="applied"
-						bind:checked={formData.applied}
-						class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
-					/>
-					<label for="applied" class="ml-2 block text-sm font-medium text-zinc-300">Applied</label>
+				<!-- Idea -->
+				<div>
+					<label for="idea" class="mb-1 block text-sm font-medium text-zinc-400">Idea</label>
+					<textarea
+						id="idea"
+						bind:value={formData.idea}
+						rows="3"
+						class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+					></textarea>
+				</div>
+
+				<div class="flex gap-6">
+					<!-- Applied Toggle -->
+					<div class="flex items-center">
+						<input
+							type="checkbox"
+							id="applied"
+							bind:checked={formData.applied}
+							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
+						/>
+						<label for="applied" class="ml-2 block text-sm font-medium text-zinc-300">Applied</label>
+					</div>
+
+					<!-- Group Toggle -->
+					<div class="flex items-center">
+						<input
+							type="checkbox"
+							id="group"
+							bind:checked={formData.group}
+							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-yellow-500 focus:ring-yellow-500"
+						/>
+						<label for="group" class="ml-2 block text-sm font-medium text-zinc-300">Group</label>
+					</div>
 				</div>
 
 				<div

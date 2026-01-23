@@ -123,14 +123,15 @@
 		'calvin_day',
 		'ihana',
 		'call_family',
-		'dreams_type',
+		'cry',
+		'sex',
 		'notes'
 	];
 </script>
 
 <div>
 	<div class="mb-6 flex items-center justify-between">
-		<h2 class="text-lg font-bold text-zinc-100">Full Table</h2>
+		<h2 class="text-lg font-bold text-zinc-100">Daily</h2>
 		{#if session && !isModalOpen && !isViewModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}

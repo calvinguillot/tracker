@@ -16,6 +16,8 @@
 		deadline: string | null;
 		link: string;
 		applied: boolean;
+		group: boolean;
+		idea: string | null;
 	};
 
 	const typeLabels: Record<number, string> = {
@@ -74,6 +76,13 @@
 		})
 	);
 
+	let activeCalls = $derived(
+		sortedArtCalls.filter((c) => getStatus(c.deadline).isOpen && !c.applied)
+	);
+	let archivedCalls = $derived(
+		sortedArtCalls.filter((c) => !getStatus(c.deadline).isOpen || c.applied)
+	);
+
 	function toggleSort(field: SortField) {
 		if (sortField === field) {
 			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
@@ -106,7 +115,7 @@
 		console.log('Fetching art calls...');
 		const { data: d, error } = await supabase
 			.from('artCalls')
-			.select('id, created_at, name, location, type, funds, deadline, link, applied')
+			.select('id, created_at, name, location, type, funds, deadline, link, applied, group, idea')
 			.order('deadline', { ascending: true });
 
 		if (!error && d) {
@@ -281,148 +290,179 @@
 			</span>
 		</div>
 
-		<ul class="grid grid-cols-1 gap-3">
-			{#each sortedArtCalls as call}
-				{@const status = getStatus(call.deadline)}
-				<li
-					class={`group relative flex flex-col justify-between rounded-lg border p-4 transition-all ${
-						status.isOpen
-							? 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900/80'
-							: 'border-zinc-800/60 bg-zinc-900/30 hover:border-zinc-700/60 hover:bg-zinc-900/40'
-					}`}
-				>
-					<div class="flex flex-col gap-3">
-						<!-- Header: Name, Location, Status -->
-						<div class="flex items-start justify-between gap-3">
-							<div class="min-w-0 flex-1">
-								<div class="flex flex-wrap items-center gap-2">
-									<h3
-										class={`truncate text-base font-bold ${
-											status.isOpen ? 'text-zinc-100' : 'text-zinc-500'
-										}`}
-										title={call.name}
-									>
-										{call.name}
-									</h3>
-									<div
-										class={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${status.bg} ${status.text} border-transparent text-center`}
-									>
-										{status.label}
-									</div>
-								</div>
-								<div
-									class={`mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs ${
-										status.isOpen ? 'text-zinc-400' : 'text-zinc-500'
+		{#snippet callCard(call: ArtCall)}
+			{@const status = getStatus(call.deadline)}
+			<li
+				class={`group relative flex flex-col justify-between rounded-lg border p-4 transition-all ${
+					status.isOpen
+						? 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900/80'
+						: 'border-zinc-800/60 bg-zinc-900/30 hover:border-zinc-700/60 hover:bg-zinc-900/40'
+				}`}
+			>
+				<div class="flex flex-col gap-3">
+					<!-- Header: Name, Location, Status -->
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0 flex-1">
+							<div class="flex flex-wrap items-center gap-2">
+								<h3
+									class={`truncate text-base font-bold ${
+										status.isOpen ? 'text-zinc-100' : 'text-zinc-500'
 									}`}
+									title={call.name}
 								>
-									<span class="truncate">{call.location}</span>
-									<span class="text-zinc-600">•</span>
-									<span>{formatType(call.type)}</span>
+									{call.name}
+								</h3>
+								<div
+									class={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${status.bg} ${status.text} border-transparent text-center`}
+								>
+									{status.label}
 								</div>
-							</div>
-							<div class="flex items-center self-center">
-								{#if call.applied}
-									<span
-										class="text-base font-normal text-emerald-400"
-										>Applied</span
+								{#if call.group}
+									<div
+										class="shrink-0 rounded-full border border-transparent bg-yellow-500/10 px-2 py-0.5 text-center text-[10px] font-medium text-yellow-500"
 									>
-								{:else}
-									<span
-										class={`text-base font-normal ${
-											status.isOpen ? 'text-zinc-400' : 'text-zinc-500'
-										}`}
-										>Not applied</span
-									>
+										Group
+									</div>
 								{/if}
+							</div>
+							<div
+								class={`mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs ${
+									status.isOpen ? 'text-zinc-400' : 'text-zinc-500'
+								}`}
+							>
+								<span class="truncate">{call.location}</span>
+								<span class="text-zinc-600">•</span>
+								<span>{formatType(call.type)}</span>
 							</div>
 						</div>
-
-						<!-- Details Row -->
-						<div
-							class="mt-1 flex items-center justify-between gap-4 border-t border-zinc-800/50 pt-3"
-						>
-							<div class="flex gap-6">
-								<div class="flex flex-col gap-0.5">
-									<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
-										>Funds</span
-									>
-									<span
-										class={`text-sm font-medium ${
-											status.isOpen ? 'text-emerald-400' : 'text-zinc-500'
-										}`}
-										>{formatFunds(call.funds)}</span
-									>
-								</div>
-								<div class="flex flex-col gap-0.5">
-									<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
-										>Deadline</span
-									>
-									<span class={`text-sm ${status.isOpen ? 'text-zinc-300' : 'text-zinc-500'}`}>
-										{formatDate(call.deadline)}
-									</span>
-								</div>
-							</div>
-
-							<div class="flex items-center gap-2">
-								{#if call.link}
-									<a
-										class={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-											status.isOpen
-												? 'bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300'
-												: 'bg-zinc-800/60 text-zinc-500 hover:bg-zinc-800'
-										}`}
-										href={call.link}
-										target="_blank"
-										rel="noreferrer"
-									>
-										Visit Link &rarr;
-									</a>
-								{/if}
-								<button
-									onclick={() => openEdit(call)}
-									class="rounded-md p-2 text-indigo-400 transition-colors hover:bg-zinc-800 hover:text-indigo-300"
-									aria-label="Edit"
+						<div class="flex items-center self-center">
+							{#if call.applied}
+								<span class="text-base font-normal text-emerald-400">Applied</span>
+							{:else}
+								<span
+									class={`text-base font-normal ${
+										status.isOpen ? 'text-zinc-400' : 'text-zinc-500'
+									}`}>Not applied</span
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-										/>
-									</svg>
-								</button>
-								<button
-									onclick={() => handleDelete(call.id)}
-									class="rounded-md p-2 text-red-400 transition-colors hover:bg-zinc-800 hover:text-red-300"
-									aria-label="Delete"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-										/>
-									</svg>
-								</button>
-							</div>
+							{/if}
 						</div>
 					</div>
-				</li>
+
+					<!-- Idea Section -->
+					{#if call.idea}
+						<div class="mt-1 border-t border-zinc-800/50 pt-3">
+							<p
+								class={`text-sm ${status.isOpen && !call.applied ? 'text-zinc-300' : 'text-zinc-500'}`}
+							>
+								{call.idea}
+							</p>
+						</div>
+					{/if}
+
+					<!-- Details Row -->
+					<div
+						class="mt-1 flex items-center justify-between gap-4 border-t border-zinc-800/50 pt-3"
+					>
+						<div class="flex gap-6">
+							<div class="flex flex-col gap-0.5">
+								<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
+									>Funds</span
+								>
+								<span
+									class={`text-sm font-medium ${
+										status.isOpen ? 'text-emerald-400' : 'text-zinc-500'
+									}`}>{formatFunds(call.funds)}</span
+								>
+							</div>
+							<div class="flex flex-col gap-0.5">
+								<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
+									>Deadline</span
+								>
+								<span class={`text-sm ${status.isOpen ? 'text-zinc-300' : 'text-zinc-500'}`}>
+									{formatDate(call.deadline)}
+								</span>
+							</div>
+						</div>
+
+						<div class="flex items-center gap-2">
+							{#if call.link}
+								<a
+									class={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+										status.isOpen
+											? 'bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300'
+											: 'bg-zinc-800/60 text-zinc-500 hover:bg-zinc-800'
+									}`}
+									href={call.link}
+									target="_blank"
+									rel="noreferrer"
+								>
+									Visit Link &rarr;
+								</a>
+							{/if}
+							<button
+								onclick={() => openEdit(call)}
+								class="rounded-md p-2 text-indigo-400 transition-colors hover:bg-zinc-800 hover:text-indigo-300"
+								aria-label="Edit"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+									/>
+								</svg>
+							</button>
+							<button
+								onclick={() => handleDelete(call.id)}
+								class="rounded-md p-2 text-red-400 transition-colors hover:bg-zinc-800 hover:text-red-300"
+								aria-label="Delete"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+									/>
+								</svg>
+							</button>
+						</div>
+					</div>
+				</div>
+			</li>
+		{/snippet}
+
+		<ul class="grid grid-cols-1 gap-3">
+			{#each activeCalls as call}
+				{@render callCard(call)}
 			{/each}
 		</ul>
+
+		{#if archivedCalls.length > 0}
+			<div class="my-8 flex items-center gap-4">
+				<div class="h-px flex-1 bg-zinc-800"></div>
+				<span class="text-sm font-medium tracking-wider text-zinc-500 uppercase">Archived</span>
+				<div class="h-px flex-1 bg-zinc-800"></div>
+			</div>
+
+			<ul class="grid grid-cols-1 gap-3">
+				{#each archivedCalls as call}
+					{@render callCard(call)}
+				{/each}
+			</ul>
+		{/if}
 	{/if}
 </section>

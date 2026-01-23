@@ -3,7 +3,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import { base } from '$app/paths';
-	import { LogOut, Table, LayoutDashboard, Palette, Menu, X, Folder } from 'lucide-svelte';
+	import { LogOut, Table, LayoutDashboard, Palette, Menu, X, Folder, StickyNote, CheckSquare } from 'lucide-svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import AlertModal from '$lib/components/AlertModal.svelte';
 
@@ -74,9 +74,9 @@
 						<LayoutDashboard class="h-6 w-6" />
 					</a>
 					<a
-						href="{base}/full-table"
+						href="{base}/daily"
 						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
-						aria-label="Full Table"
+						aria-label="Daily"
 					>
 						<Table class="h-6 w-6" />
 					</a>
@@ -93,6 +93,20 @@
 						aria-label="Projects"
 					>
 						<Folder class="h-6 w-6" />
+					</a>
+					<a
+						href="{base}/tasks"
+						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
+						aria-label="Tasks"
+					>
+						<CheckSquare class="h-6 w-6" />
+					</a>
+					<a
+						href="{base}/notes"
+						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
+						aria-label="Notes"
+					>
+						<StickyNote class="h-6 w-6" />
 					</a>
 				</nav>
 
@@ -144,12 +158,12 @@
 					<span class="font-medium">Dashboard</span>
 				</a>
 				<a
-					href="{base}/full-table"
+					href="{base}/daily"
 					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
 					onclick={() => (isMobileMenuOpen = false)}
 				>
 					<Table class="h-5 w-5" />
-					<span class="font-medium">Full Table</span>
+					<span class="font-medium">Daily</span>
 				</a>
 				<a
 					href="{base}/artcalls"
@@ -166,6 +180,22 @@
 				>
 					<Folder class="h-5 w-5" />
 					<span class="font-medium">Projects</span>
+				</a>
+				<a
+					href="{base}/tasks"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					onclick={() => (isMobileMenuOpen = false)}
+				>
+					<CheckSquare class="h-5 w-5" />
+					<span class="font-medium">Tasks</span>
+				</a>
+				<a
+					href="{base}/notes"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					onclick={() => (isMobileMenuOpen = false)}
+				>
+					<StickyNote class="h-5 w-5" />
+					<span class="font-medium">Notes</span>
 				</a>
 				<div class="my-2 border-t border-zinc-800"></div>
 				<button

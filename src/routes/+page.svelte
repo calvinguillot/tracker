@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import EntryModal from '$lib/components/EntryModal.svelte';
-	import { Plus, Loader } from 'lucide-svelte';
+	import { Plus, Loader, Download } from 'lucide-svelte';
 	import { LayerCake, Svg, Html } from 'layercake';
 	import { scaleTime } from 'd3-scale';
 	import { timeFormat } from 'd3-time-format';
@@ -23,6 +23,7 @@
 	let rawData = $state<any[]>([]);
 	let appliedArtCallsCount = $state(0);
 	let completedProjectsCount = $state(0);
+	let completedTasksCount = $state(0);
 
 	let parsedData = $derived(
 		rawData
@@ -133,7 +134,9 @@
 			art: { label: 'Art', count: 0, icon: '🎨' },
 			music: { label: 'Music', count: 0, icon: '🎵' },
 			leisure: { label: 'Leisure', count: 0, icon: '🎮' },
-			call_family: { label: 'Family Calls', count: 0, icon: '📞' }
+			call_family: { label: 'Family Calls', count: 0, icon: '📞' },
+			cry: { label: 'Cry', count: 0, icon: '😢' },
+			sex: { label: 'Sex', count: 0, icon: '❤️' }
 		};
 
 		// Filter data based on toggle
@@ -160,6 +163,8 @@
 			if (d.music_type && d.music_type.trim()) stats.music.count++;
 			if (d.leisure_type && d.leisure_type.trim()) stats.leisure.count++;
 			if (d.call_family === true) stats.call_family.count++;
+			if (d.cry === true) stats.cry.count++;
+			if (d.sex === true) stats.sex.count++;
 		}
 
 		return stats;
@@ -171,8 +176,7 @@
 			if (s) {
 				fetchData();
 				fetchProjectStats();
-			}
-			else isLoading = false;
+			} else isLoading = false;
 		});
 
 		const {
@@ -182,8 +186,7 @@
 			if (_session) {
 				fetchData();
 				fetchProjectStats();
-			}
-			else isLoading = false;
+			} else isLoading = false;
 		});
 
 		return () => subscription.unsubscribe();
@@ -194,7 +197,7 @@
 		const { data: d, error } = await supabase
 			.from('dailyTracking')
 			.select(
-				'created_at, mood, energy, physical, sleep, meals, weight, exercise_type, ihana, calvin_day, sickness, work_type, study_type, culture_type, art_type, music_type, leisure_type, call_family'
+				'created_at, mood, energy, physical, sleep, meals, weight, exercise_type, ihana, calvin_day, sickness, work_type, study_type, culture_type, art_type, music_type, leisure_type, call_family, cry, sex'
 			)
 			.order('created_at', { ascending: true });
 
@@ -209,11 +212,15 @@
 	async function fetchProjectStats() {
 		isStatsLoading = true;
 
-		const [{ count: appliedCount, error: appliedError }, { count: completedCount, error: completedError }] =
-			await Promise.all([
-				supabase.from('artCalls').select('id', { count: 'exact', head: true }).eq('applied', true),
-				supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 3)
-			]);
+		const [
+			{ count: appliedCount, error: appliedError },
+			{ count: completedCount, error: completedError },
+			{ count: completedTasksCountRes, error: completedTasksError }
+		] = await Promise.all([
+			supabase.from('artCalls').select('id', { count: 'exact', head: true }).eq('applied', true),
+			supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 3),
+			supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'done')
+		]);
 
 		if (appliedError) {
 			console.error('Error fetching applied art calls count:', appliedError);
@@ -225,6 +232,12 @@
 			console.error('Error fetching completed projects count:', completedError);
 		} else {
 			completedProjectsCount = completedCount ?? 0;
+		}
+
+		if (completedTasksError) {
+			console.error('Error fetching completed tasks count:', completedTasksError);
+		} else {
+			completedTasksCount = completedTasksCountRes ?? 0;
 		}
 
 		isStatsLoading = false;
@@ -246,6 +259,74 @@
 		const k = key as MetricKey;
 		activeMetrics[k].active = !activeMetrics[k].active;
 	}
+
+	function convertToCSV(objArray: any[]) {
+		if (!objArray || objArray.length === 0) return '';
+		const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
+
+		// Collect all unique headers from all objects to handle varying schemas if any
+		const headers = Object.keys(array[0]);
+		let str = headers.join(',') + '\r\n';
+
+		for (let i = 0; i < array.length; i++) {
+			let line = '';
+			for (const header of headers) {
+				if (line !== '') line += ',';
+
+				let item = array[i][header];
+
+				if (item === null || item === undefined) {
+					item = '';
+				} else if (typeof item === 'object') {
+					// JSON objects like checklist or arrays
+					item = JSON.stringify(item).replace(/"/g, '""');
+					item = `"${item}"`;
+				} else {
+					item = String(item).replace(/"/g, '""');
+					if (item.search(/("|,|\n)/g) >= 0) {
+						item = `"${item}"`;
+					}
+				}
+				line += item;
+			}
+			str += line + '\r\n';
+		}
+		return str;
+	}
+
+	async function backupDatabase() {
+		const tables = ['dailyTracking', 'projects', 'artCalls', 'notes', 'tasks'];
+
+		for (const table of tables) {
+			const { data, error } = await supabase.from(table).select('*');
+
+			if (error) {
+				console.error(`Error fetching ${table}:`, error);
+				showAlert(`Error backing up ${table}: ${error.message}`, 'Error');
+				continue;
+			}
+
+			if (!data || data.length === 0) continue;
+
+			const csv = convertToCSV(data);
+			const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+			const link = document.createElement('a');
+			const url = URL.createObjectURL(blob);
+
+			link.setAttribute('href', url);
+			link.setAttribute(
+				'download',
+				`${table}_backup_${new Date().toISOString().split('T')[0]}.csv`
+			);
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+
+			// Small delay to prevent browser blocking multiple downloads
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		}
+	}
 </script>
 
 <div>
@@ -259,7 +340,7 @@
 			<div class="grid gap-4 lg:grid-cols-3">
 				<!-- Timeline (Chart) - 2/3 width on desktop -->
 				<div class="space-y-3 lg:col-span-2">
-					<h2 class="text-lg font-semibold text-zinc-100">Timeline</h2>
+					<h2 class="text-lg font-bold text-zinc-100">Dashboard</h2>
 
 					<!-- Controls -->
 					<div class="space-y-3 rounded-lg bg-zinc-900 p-4 shadow-lg">
@@ -342,6 +423,16 @@
 							Not enough data to display chart. Add more entries!
 						</div>
 					{/if}
+
+					<div class="flex justify-end pt-2">
+						<button
+							onclick={backupDatabase}
+							class="flex items-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-white"
+						>
+							<Download class="h-4 w-4" />
+							Backup Database
+						</button>
+					</div>
 				</div>
 
 				<!-- Events - 1/3 width on desktop -->
@@ -381,7 +472,9 @@
 							<h2 class="text-lg font-semibold text-zinc-100">Projects</h2>
 						</div>
 						<div class="grid grid-cols-2 gap-2">
-							<div class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800">
+							<div
+								class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
+							>
 								<div class="flex items-center gap-2.5">
 									<span class="text-lg">📝</span>
 									<div class="flex-1">
@@ -392,7 +485,9 @@
 									</div>
 								</div>
 							</div>
-							<div class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800">
+							<div
+								class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
+							>
 								<div class="flex items-center gap-2.5">
 									<span class="text-lg">✅</span>
 									<div class="flex-1">
@@ -400,6 +495,19 @@
 									</div>
 									<div class="text-xl font-bold text-white">
 										{isStatsLoading ? '—' : completedProjectsCount}
+									</div>
+								</div>
+							</div>
+							<div
+								class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
+							>
+								<div class="flex items-center gap-2.5">
+									<span class="text-lg">☑️</span>
+									<div class="flex-1">
+										<div class="text-xs font-medium text-zinc-300">Completed Tasks</div>
+									</div>
+									<div class="text-xl font-bold text-white">
+										{isStatsLoading ? '—' : completedTasksCount}
 									</div>
 								</div>
 							</div>

@@ -20,7 +20,8 @@
 		calvin_day: false,
 		ihana: false,
 		call_family: false,
-		dreams_type: '',
+		cry: false,
+		sex: false,
 		notes: ''
 	});
 
@@ -48,7 +49,8 @@
 					calvin_day: entry.calvin_day ?? false,
 					ihana: entry.ihana ?? false,
 					call_family: entry.call_family ?? false,
-					dreams_type: entry.dreams_type ?? '',
+					cry: entry.cry ?? false,
+					sex: entry.sex ?? false,
 					notes: entry.notes ?? ''
 				};
 			} else {
@@ -72,6 +74,8 @@
 					calvin_day: false,
 					ihana: false,
 					call_family: false,
+					cry: false,
+					sex: false,
 					dreams_type: '',
 					notes: ''
 				};
@@ -218,11 +222,29 @@
 						/>
 						<label for="call_family" class="ml-2 block text-sm text-zinc-300">Call Family</label>
 					</div>
+					<div class="flex items-center">
+						<input
+							type="checkbox"
+							id="cry"
+							bind:checked={formData.cry}
+							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
+						/>
+						<label for="cry" class="ml-2 block text-sm text-zinc-300">Cry</label>
+					</div>
+					<div class="flex items-center">
+						<input
+							type="checkbox"
+							id="sex"
+							bind:checked={formData.sex}
+							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
+						/>
+						<label for="sex" class="ml-2 block text-sm text-zinc-300">Sex</label>
+					</div>
 				</div>
 
 				<!-- Text Fields -->
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-					{#each ['work_type', 'study_type', 'culture_type', 'art_type', 'music_type', 'exercise_type', 'leisure_type', 'dreams_type'] as field}
+					{#each ['work_type', 'study_type', 'culture_type', 'art_type', 'music_type', 'exercise_type', 'leisure_type'] as field}
 						<div>
 							<label for={field} class="mb-1 block text-sm font-medium text-zinc-400 capitalize"
 								>{field.replace('_type', '')}</label

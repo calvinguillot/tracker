@@ -4,7 +4,6 @@
 	let formData = $state({
 		name: '',
 		description: '',
-		requirements: '',
 		funds: null as number | null,
 		status: 0,
 		percentage: 0,
@@ -19,7 +18,6 @@
 				formData = {
 					name: entry.name || '',
 					description: entry.description || '',
-					requirements: entry.requirements || '',
 					funds: entry.funds,
 					status: entry.status ?? 0,
 					percentage: entry.percentage ?? 0,
@@ -32,7 +30,6 @@
 				formData = {
 					name: '',
 					description: '',
-					requirements: '',
 					funds: null,
 					status: 0,
 					percentage: 0,
@@ -121,19 +118,6 @@
 					<textarea
 						id="description"
 						bind:value={formData.description}
-						rows="3"
-						class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-					></textarea>
-				</div>
-
-				<!-- Requirements -->
-				<div>
-					<label for="requirements" class="mb-1 block text-sm font-medium text-zinc-400"
-						>Requirements</label
-					>
-					<textarea
-						id="requirements"
-						bind:value={formData.requirements}
 						rows="3"
 						class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 					></textarea>
