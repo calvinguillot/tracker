@@ -65,6 +65,12 @@
 		})
 	);
 
+	let activeTasks = $derived(sortedTasks.filter((t) => t.status !== 'done'));
+
+	let archivedTasks = $derived(sortedTasks.filter((t) => t.status === 'done'));
+
+	let completedCount = $derived(tasks.filter((t) => t.status === 'done').length);
+
 	function toggleSort(field: SortField) {
 		if (sortField === field) {
 			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
@@ -252,134 +258,158 @@
 				</button>
 			{/each}
 			<span class="ml-auto text-xs text-zinc-500">
-				Total: {tasks.length}
+				Completed {completedCount} / {tasks.length}
 			</span>
 		</div>
 
-		<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-			{#each sortedTasks as task}
-				{@const statusStyle = getStatusColor(task.status)}
-				<li
-					class="group relative flex flex-col justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 transition-all hover:border-zinc-700 hover:bg-zinc-900/80"
-				>
-					<div class="flex flex-col gap-3">
-						<!-- Header: Title, Status -->
-						<div class="flex items-start justify-between gap-3">
-							<div class="min-w-0 flex-1">
-								<div class="flex flex-wrap items-center gap-2">
-									{#if task.color}
-										<div
-											class="h-3 w-3 rounded-full {task.color.startsWith('bg-') ? task.color : ''}"
-											style={!task.color.startsWith('bg-') ? `background-color: ${task.color}` : ''}
-											title="Task Color"
-										></div>
-									{/if}
-									<h3 class="truncate text-base font-bold text-zinc-100" title={task.title}>
-										{task.title}
-									</h3>
-								</div>
-								<div class="mt-1 flex items-center gap-2 text-xs">
+		{#snippet taskCard(task: Task, archived: boolean)}
+			{@const statusStyle = getStatusColor(task.status)}
+			<li
+				class={`group relative flex flex-col justify-between rounded-lg border p-4 transition-all ${
+					archived
+						? 'border-zinc-800/60 bg-zinc-900/30 text-zinc-500 hover:border-zinc-700/60 hover:bg-zinc-900/40'
+						: 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900/80'
+				}`}
+			>
+				<div class="flex flex-col gap-3">
+					<!-- Header: Title, Status -->
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0 flex-1">
+							<div class="flex flex-wrap items-center gap-2">
+								{#if task.color}
 									<div
-										class={`shrink-0 rounded-full px-2 py-0.5 font-medium ${statusStyle.bg} ${statusStyle.text}`}
-									>
-										{getStatusLabel(task.status)}
-									</div>
-									{#if task.type}
-										<span class="text-zinc-500">•</span>
-										<span class="text-zinc-400"
-											>{settings.getTaskType(task.type)?.label ?? task.type}</span
-										>
-									{/if}
-									{#if task.checklist && task.checklist.length > 0}
-										<span class="text-zinc-500">•</span>
-										<ListChecks class="h-4 w-4 text-zinc-400" />
-										<span class="text-xs text-zinc-500">
-											{task.checklist.filter((i: any) => i.completed).length}/{task.checklist
-												.length}
-										</span>
-									{/if}
-								</div>
-							</div>
-						</div>
-
-						<!-- Body Snippet -->
-						{#if task.body}
-							<p class="line-clamp-3 text-sm text-zinc-400">
-								{task.body}
-							</p>
-						{/if}
-
-						<!-- Details Row -->
-						<div
-							class="mt-2 flex items-center justify-between gap-4 border-t border-zinc-800/50 pt-3"
-						>
-							<div class="flex gap-4">
-								<div class="flex flex-col gap-0.5">
-									<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
-										>Deadline</span
-									>
-									<span class="text-xs text-zinc-300">
-										{formatDate(task.deadline_at)}
-									</span>
-								</div>
-								{#if task.completed_at}
-									<div class="flex flex-col gap-0.5">
-										<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
-											>Completed</span
-										>
-										<span class="text-xs text-emerald-400">
-											{formatDate(task.completed_at)}
-										</span>
-									</div>
+										class={`h-3 w-3 rounded-full ${archived ? 'opacity-50' : ''}`}
+										style="background-color: {task.color}"
+										title="Task Color"
+									></div>
 								{/if}
+								<h3
+									class={`truncate text-base font-bold ${archived ? 'text-zinc-500' : 'text-zinc-100'}`}
+									title={task.title}
+								>
+									{task.title}
+								</h3>
 							</div>
-
-							<div class="flex items-center gap-2">
-								<button
-									onclick={() => openEdit(task)}
-									class="rounded-md p-2 text-indigo-400 transition-colors hover:bg-zinc-800 hover:text-indigo-300"
-									aria-label="Edit"
+							<div class="mt-1 flex items-center gap-2 text-xs">
+								<div
+									class={`shrink-0 rounded-full px-2 py-0.5 font-medium ${statusStyle.bg} ${statusStyle.text}`}
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
+									{getStatusLabel(task.status)}
+								</div>
+								{#if task.type}
+									<span class="text-zinc-500">•</span>
+									<span class={archived ? 'text-zinc-600' : 'text-zinc-400'}
+										>{settings.getTaskType(task.type)?.label ?? task.type}</span
 									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-										/>
-									</svg>
-								</button>
-								<button
-									onclick={() => handleDelete(task.id)}
-									class="rounded-md p-2 text-red-400 transition-colors hover:bg-zinc-800 hover:text-red-300"
-									aria-label="Delete"
-								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-5 w-5"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-										/>
-									</svg>
-								</button>
+								{/if}
+								{#if task.checklist && task.checklist.length > 0}
+									<span class="text-zinc-500">•</span>
+									<ListChecks class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`} />
+									<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
+										{task.checklist.filter((i: any) => i.completed).length}/{task.checklist.length}
+									</span>
+								{/if}
 							</div>
 						</div>
 					</div>
-				</li>
+
+					<!-- Body Snippet -->
+					{#if task.body}
+						<p class={`line-clamp-3 text-sm ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}>
+							{task.body}
+						</p>
+					{/if}
+
+					<!-- Details Row -->
+					<div
+						class="mt-2 flex items-center justify-between gap-4 border-t border-zinc-800/50 pt-3"
+					>
+						<div class="flex gap-4">
+							<div class="flex flex-col gap-0.5">
+								<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
+									>Deadline</span
+								>
+								<span class={`text-xs ${archived ? 'text-zinc-500' : 'text-zinc-300'}`}>
+									{formatDate(task.deadline_at)}
+								</span>
+							</div>
+							{#if task.completed_at}
+								<div class="flex flex-col gap-0.5">
+									<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
+										>Completed</span
+									>
+									<span class={`text-xs ${archived ? 'text-zinc-500' : 'text-emerald-400'}`}>
+										{formatDate(task.completed_at)}
+									</span>
+								</div>
+							{/if}
+						</div>
+
+						<div class="flex items-center gap-2">
+							<button
+								onclick={() => openEdit(task)}
+								class="rounded-md p-2 text-indigo-400 transition-colors hover:bg-zinc-800 hover:text-indigo-300"
+								aria-label="Edit"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+									/>
+								</svg>
+							</button>
+							<button
+								onclick={() => handleDelete(task.id)}
+								class="rounded-md p-2 text-red-400 transition-colors hover:bg-zinc-800 hover:text-red-300"
+								aria-label="Delete"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+									/>
+								</svg>
+							</button>
+						</div>
+					</div>
+				</div>
+			</li>
+		{/snippet}
+
+		<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+			{#each activeTasks as task}
+				{@render taskCard(task, false)}
 			{/each}
 		</ul>
+
+		{#if archivedTasks.length > 0}
+			<div class="my-8 flex items-center gap-4">
+				<div class="h-px flex-1 bg-zinc-800"></div>
+				<span class="text-sm font-medium tracking-wider text-zinc-500 uppercase">Archived</span>
+				<div class="h-px flex-1 bg-zinc-800"></div>
+			</div>
+
+			<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+				{#each archivedTasks as task}
+					{@render taskCard(task, true)}
+				{/each}
+			</ul>
+		{/if}
 	{/if}
 </section>

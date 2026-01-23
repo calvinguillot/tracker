@@ -62,6 +62,8 @@
 
 	let archivedProjects = $derived(sortedProjects.filter((p) => p.status === 3 || p.status === 4));
 
+	let completedCount = $derived(projects.filter((p) => p.status === 3).length);
+
 	let ganttData = $derived.by(() => {
 		const validProjects = sortedProjects.filter((p) => p.start_at && p.end_at);
 		if (validProjects.length === 0) {
@@ -289,22 +291,28 @@
 				{/each}
 			</div>
 
-			<!-- View Toggle -->
-			<div class="flex items-center rounded-lg bg-zinc-800/50 p-1">
-				<button
-					class={`rounded-md p-1.5 transition-all ${viewMode === 'list' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
-					onclick={() => (viewMode = 'list')}
-					aria-label="List View"
-				>
-					<List class="h-4 w-4" />
-				</button>
-				<button
-					class={`rounded-md p-1.5 transition-all ${viewMode === 'gantt' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
-					onclick={() => (viewMode = 'gantt')}
-					aria-label="Gantt View"
-				>
-					<Calendar class="h-4 w-4" />
-				</button>
+			<div class="flex items-center gap-4">
+				<span class="text-xs text-zinc-500">
+					Completed {completedCount} / {projects.length}
+				</span>
+
+				<!-- View Toggle -->
+				<div class="flex items-center rounded-lg bg-zinc-800/50 p-1">
+					<button
+						class={`rounded-md p-1.5 transition-all ${viewMode === 'list' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+						onclick={() => (viewMode = 'list')}
+						aria-label="List View"
+					>
+						<List class="h-4 w-4" />
+					</button>
+					<button
+						class={`rounded-md p-1.5 transition-all ${viewMode === 'gantt' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+						onclick={() => (viewMode = 'gantt')}
+						aria-label="Gantt View"
+					>
+						<Calendar class="h-4 w-4" />
+					</button>
+				</div>
 			</div>
 		</div>
 
