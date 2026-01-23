@@ -255,7 +255,8 @@
 							<button
 								type="button"
 								onclick={createChecklist}
-								class="text-xs text-indigo-400 hover:text-indigo-300"
+								class="text-xs transition-colors hover:brightness-125"
+								style="color: {settings.getAccentLightHex()}"
 							>
 								+ Create Checklist
 							</button>
@@ -347,7 +348,8 @@
 					>
 					<button
 						type="submit"
-						class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+						class="rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+						style="background-color: {settings.getAccentHex()}"
 						>Save</button
 					>
 				</div>

@@ -6,6 +6,7 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { Plus, Loader } from 'lucide-svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
+	import { settings } from '$lib/settingsStore.svelte';
 
 	let { data } = $props();
 	let trackingData = $state<any[]>(untrack(() => data.dailyTracking));
@@ -136,7 +137,8 @@
 		{#if session && !isModalOpen && !isViewModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
-				class="fixed right-8 bottom-8 z-50 rounded-full bg-indigo-600 p-4 text-white shadow-lg transition-transform hover:scale-105 hover:bg-indigo-500"
+				class="fixed right-8 bottom-8 z-50 rounded-full p-4 text-white shadow-lg transition-all hover:scale-105 hover:brightness-110"
+				style="background-color: {settings.getAccentHex()}"
 				aria-label="New Entry"
 			>
 				<Plus class="h-6 w-6" />

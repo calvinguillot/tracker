@@ -151,6 +151,28 @@ class SettingsStore {
 		// Task types stored as strings in local state usually, but let's handle loose typing
 		return this.settings.task_types.find(t => t.id == id);
 	}
+
+	// Get accent color hex value for inline styles
+	getAccentHex(): string {
+		const accent = this.settings.global_types.accent;
+		const p = PALETTE.find(p => p.class === accent);
+		return p?.hex || '#4f46e5'; // default to indigo
+	}
+
+	// Get a lighter variant of accent (for hover states, text colors)
+	getAccentLightHex(): string {
+		const hex = this.getAccentHex();
+		// Lighten the color by ~20% for hover/text states
+		return this.lightenColor(hex, 0.3);
+	}
+
+	private lightenColor(hex: string, percent: number): string {
+		const num = parseInt(hex.replace('#', ''), 16);
+		const r = Math.min(255, Math.floor((num >> 16) + (255 - (num >> 16)) * percent));
+		const g = Math.min(255, Math.floor(((num >> 8) & 0x00ff) + (255 - ((num >> 8) & 0x00ff)) * percent));
+		const b = Math.min(255, Math.floor((num & 0x0000ff) + (255 - (num & 0x0000ff)) * percent));
+		return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+	}
 }
 
 export const settings = new SettingsStore();

@@ -218,7 +218,8 @@
 		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
-				class="fixed right-8 bottom-8 z-50 rounded-full bg-indigo-600 p-4 text-white shadow-lg transition-transform hover:scale-105 hover:bg-indigo-500"
+				class="fixed right-8 bottom-8 z-50 rounded-full p-4 text-white shadow-lg transition-all hover:scale-105 hover:brightness-110"
+				style="background-color: {settings.getAccentHex()}"
 				aria-label="New Task"
 			>
 				<Plus class="h-6 w-6" />
@@ -278,8 +279,8 @@
 							<div class="flex flex-wrap items-center gap-2">
 								{#if task.color}
 									<div
-										class={`h-3 w-3 rounded-full ${archived ? 'opacity-50' : ''}`}
-										style="background-color: {task.color}"
+										class={`h-3 w-3 rounded-full ${archived ? 'opacity-50' : ''} ${task.color.startsWith('bg-') ? task.color : ''}`}
+										style={!task.color.startsWith('bg-') ? `background-color: ${task.color}` : ''}
 										title="Task Color"
 									></div>
 								{/if}

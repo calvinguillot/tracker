@@ -68,10 +68,11 @@
 			<div class="justify-self-start">
 				<a
 					href="{base}/"
-					class="jiggle-link flex text-2xl font-bold tracking-tight text-zinc-100 transition-colors hover:text-indigo-400"
+					class="jiggle-link group flex text-2xl font-bold tracking-tight text-zinc-100 transition-colors"
+					style="--accent-color: {settings.getAccentLightHex()}"
 				>
 					{#each 'CG Tracker 2026'.split('') as char, i}
-						<span class="jiggle-char" style="animation-delay: {i * 0.05}s">
+						<span class="jiggle-char group-hover:text-[var(--accent-color)]" style="animation-delay: {i * 0.05}s">
 							{char}
 						</span>
 					{/each}
@@ -79,55 +80,55 @@
 			</div>
 
 			{#if session}
-				<nav class="hidden items-center justify-center gap-2 md:flex">
+				<nav class="hidden items-center justify-center gap-2 md:flex" style="--accent-color: {settings.getAccentLightHex()}">
 					<a
 						href="{base}/"
-						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
+						class="px-6 text-zinc-400 transition-colors hover:text-[var(--accent-color)]"
 						aria-label="Dashboard"
 					>
 						<LayoutDashboard class="h-6 w-6" />
 					</a>
 					<a
 						href="{base}/daily"
-						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
+						class="px-6 text-zinc-400 transition-colors hover:text-[var(--accent-color)]"
 						aria-label="Daily"
 					>
 						<Table class="h-6 w-6" />
 					</a>
 					<a
 						href="{base}/artcalls"
-						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
+						class="px-6 text-zinc-400 transition-colors hover:text-[var(--accent-color)]"
 						aria-label="Art Calls"
 					>
 						<Palette class="h-6 w-6" />
 					</a>
 					<a
 						href="{base}/projects"
-						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
+						class="px-6 text-zinc-400 transition-colors hover:text-[var(--accent-color)]"
 						aria-label="Projects"
 					>
 						<Folder class="h-6 w-6" />
 					</a>
 					<a
 						href="{base}/tasks"
-						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
+						class="px-6 text-zinc-400 transition-colors hover:text-[var(--accent-color)]"
 						aria-label="Tasks"
 					>
 						<CheckSquare class="h-6 w-6" />
 					</a>
 					<a
 						href="{base}/notes"
-						class="px-6 text-zinc-400 transition-colors hover:text-indigo-400"
+						class="px-6 text-zinc-400 transition-colors hover:text-[var(--accent-color)]"
 						aria-label="Notes"
 					>
 						<StickyNote class="h-6 w-6" />
 					</a>
 				</nav>
 
-				<div class="hidden items-center justify-end gap-4 justify-self-end md:flex">
+				<div class="hidden items-center justify-end gap-4 justify-self-end md:flex" style="--accent-color: {settings.getAccentLightHex()}">
 					<a
 						href="{base}/settings"
-						class="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-800/50 hover:text-indigo-400"
+						class="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-800/50 hover:text-[var(--accent-color)]"
 						aria-label="Settings"
 					>
 						<Settings class="h-6 w-6" />
@@ -169,10 +170,10 @@
 
 		<!-- Mobile Menu Overlay -->
 		{#if session && isMobileMenuOpen}
-			<div class="mb-8 flex flex-col gap-2 rounded-lg bg-zinc-900 p-4 md:hidden">
+			<div class="mb-8 flex flex-col gap-2 rounded-lg bg-zinc-900 p-4 md:hidden" style="--accent-color: {settings.getAccentLightHex()}">
 				<a
 					href="{base}/"
-					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-[var(--accent-color)]"
 					onclick={() => (isMobileMenuOpen = false)}
 				>
 					<LayoutDashboard class="h-5 w-5" />
@@ -180,7 +181,7 @@
 				</a>
 				<a
 					href="{base}/daily"
-					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-[var(--accent-color)]"
 					onclick={() => (isMobileMenuOpen = false)}
 				>
 					<Table class="h-5 w-5" />
@@ -188,7 +189,7 @@
 				</a>
 				<a
 					href="{base}/artcalls"
-					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-[var(--accent-color)]"
 					onclick={() => (isMobileMenuOpen = false)}
 				>
 					<Palette class="h-5 w-5" />
@@ -196,7 +197,7 @@
 				</a>
 				<a
 					href="{base}/projects"
-					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-[var(--accent-color)]"
 					onclick={() => (isMobileMenuOpen = false)}
 				>
 					<Folder class="h-5 w-5" />
@@ -204,7 +205,7 @@
 				</a>
 				<a
 					href="{base}/tasks"
-					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-[var(--accent-color)]"
 					onclick={() => (isMobileMenuOpen = false)}
 				>
 					<CheckSquare class="h-5 w-5" />
@@ -212,7 +213,7 @@
 				</a>
 				<a
 					href="{base}/notes"
-					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-[var(--accent-color)]"
 					onclick={() => (isMobileMenuOpen = false)}
 				>
 					<StickyNote class="h-5 w-5" />
@@ -220,7 +221,7 @@
 				</a>
 				<a
 					href="{base}/settings"
-					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-indigo-400"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-[var(--accent-color)]"
 					onclick={() => (isMobileMenuOpen = false)}
 				>
 					<Settings class="h-5 w-5" />

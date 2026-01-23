@@ -80,7 +80,8 @@
 		<h2 class="text-2xl font-bold text-zinc-100">Settings</h2>
 		<button
 			onclick={handleSave}
-			class="flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+			class="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110"
+			style="background-color: {settings.getAccentHex()}"
 		>
 			<Save class="h-4 w-4" /> Save Changes
 		</button>
@@ -115,7 +116,8 @@
 				<h3 class="text-lg font-semibold text-zinc-100">Art Call Types</h3>
 				<button
 					onclick={addCallType}
-					class="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+					class="flex items-center gap-1 text-xs transition-colors hover:brightness-125"
+					style="color: {settings.getAccentLightHex()}"
 				>
 					<Plus class="h-4 w-4" /> Add Type
 				</button>
@@ -147,7 +149,8 @@
 				<h3 class="text-lg font-semibold text-zinc-100">Project Types</h3>
 				<button
 					onclick={addProjectType}
-					class="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+					class="flex items-center gap-1 text-xs transition-colors hover:brightness-125"
+					style="color: {settings.getAccentLightHex()}"
 				>
 					<Plus class="h-4 w-4" /> Add Type
 				</button>
@@ -196,7 +199,8 @@
 				<h3 class="text-lg font-semibold text-zinc-100">Task Types</h3>
 				<button
 					onclick={addTaskType}
-					class="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+					class="flex items-center gap-1 text-xs transition-colors hover:brightness-125"
+					style="color: {settings.getAccentLightHex()}"
 				>
 					<Plus class="h-4 w-4" /> Add Type
 				</button>
@@ -276,31 +280,27 @@
 				<h3 class="text-lg font-semibold text-zinc-100">Note Colors (Palette)</h3>
 				<div class="text-xs text-zinc-500">Edit available colors for notes</div>
 			</div>
-			<div class="flex flex-wrap gap-3">
+			<div class="flex flex-wrap gap-2">
 				{#each settings.settings.notes_types as type, i}
-					<div class="group relative">
+					<label
+						class="relative h-6 w-6 cursor-pointer rounded-full border border-zinc-700 transition-transform hover:scale-110 focus-within:ring-2 focus-within:ring-white"
+						style={`background-color: ${type.color};`}
+						title="Change Color"
+					>
 						<input
 							type="color"
 							bind:value={type.color}
-							class="h-10 w-10 cursor-pointer rounded-full border-none bg-transparent p-0 transition-transform hover:scale-110"
-							title="Change Color"
+							class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
 						/>
-						<button
-							onclick={() => removeNoteColor(i)}
-							class="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white shadow-sm group-hover:flex"
-							title="Remove"
-						>
-							<span class="text-[10px] font-bold">×</span>
-						</button>
-					</div>
+					</label>
 				{/each}
-				<button
+				<!-- <button
 					onclick={addNoteColor}
-					class="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-zinc-600 text-zinc-500 hover:border-zinc-400 hover:text-zinc-300"
+					class="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-zinc-600 text-zinc-500 hover:border-zinc-400 hover:text-zinc-300"
 					title="Add Color"
 				>
-					<Plus class="h-4 w-4" />
-				</button>
+					<Plus class="h-3 w-3" />
+				</button> -->
 			</div>
 		</section>
 	{/if}

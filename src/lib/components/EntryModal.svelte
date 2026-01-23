@@ -450,7 +450,8 @@
 					<button
 						type="submit"
 						disabled={isUploading}
-						class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
+						class="rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50"
+						style="background-color: {settings.getAccentHex()}"
 						>{isUploading ? 'Uploading...' : 'Save'}</button
 					>
 				</div>
