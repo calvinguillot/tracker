@@ -532,6 +532,7 @@
 			entry={null}
 			onClose={() => (isModalOpen = false)}
 			onSave={handleSave}
+			userId={session.user.id}
 		/>
 	{:else}
 		<div class="py-16 text-center">

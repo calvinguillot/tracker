@@ -239,6 +239,37 @@
 			</div>
 		</section>
 
+		<section class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6">
+			<div class="mb-4 flex items-center justify-between">
+				<h3 class="text-lg font-semibold text-zinc-100">Daily Activity Types</h3>
+				<div class="text-xs text-zinc-500">Comma-separated values</div>
+			</div>
+			<div class="space-y-4">
+				{#each ['work', 'study', 'culture', 'art', 'music', 'exercise', 'leisure'] as category}
+					<div>
+						<label
+							for={`daily_${category}`}
+							class="mb-1 block text-sm font-medium text-zinc-400 capitalize">{category}</label
+						>
+						<textarea
+							id={`daily_${category}`}
+							value={settings.settings.daily_type[category]?.join(', ') || ''}
+							oninput={(e) => {
+								const val = (e.target as HTMLTextAreaElement).value;
+								settings.settings.daily_type[category] = val
+									.split(',')
+									.map((s) => s.trim())
+									.filter((s) => s.length > 0);
+							}}
+							rows="2"
+							class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-sm text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+							placeholder={`e.g. Type 1, Type 2`}
+						></textarea>
+					</div>
+				{/each}
+			</div>
+		</section>
+
 		<!-- Note Colors -->
 		<section class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6">
 			<div class="mb-4 flex items-center justify-between">

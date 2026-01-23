@@ -269,8 +269,8 @@
 								<div class="flex flex-wrap items-center gap-2">
 									{#if task.color}
 										<div
-											class="h-3 w-3 rounded-full"
-											style="background-color: {task.color}"
+											class="h-3 w-3 rounded-full {task.color.startsWith('bg-') ? task.color : ''}"
+											style={!task.color.startsWith('bg-') ? `background-color: ${task.color}` : ''}
 											title="Task Color"
 										></div>
 									{/if}

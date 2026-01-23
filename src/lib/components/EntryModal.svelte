@@ -2,6 +2,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { processImage } from '$lib/utils/image';
 	import { showAlert } from '$lib/alertStore.svelte';
+	import { settings } from '$lib/settingsStore.svelte';
 
 	let { isOpen, entry, onClose, onSave, userId } = $props();
 
@@ -107,15 +108,13 @@
 
 	async function handleRemoveImage() {
 		if (formData.image) {
-			const { error } = await supabase.storage
-				.from('dailyPicture')
-				.remove([formData.image]);
-			
+			const { error } = await supabase.storage.from('dailyPicture').remove([formData.image]);
+
 			if (error) {
 				showAlert('Failed to delete image: ' + error.message, 'Error');
 				return;
 			}
-			
+
 			formData.image = null;
 			imageFile = null;
 			imagePreview = null;
@@ -125,7 +124,7 @@
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
-		
+
 		let imagePath: string | null = formData.image;
 
 		if (imageFile) {
@@ -147,7 +146,7 @@
 					});
 
 				if (error) throw error;
-				
+
 				imagePath = data.path;
 			} catch (error: any) {
 				showAlert(`Image upload failed: ${error.message}`, 'Error');
@@ -317,16 +316,36 @@
 				<!-- Text Fields -->
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 					{#each ['work_type', 'study_type', 'culture_type', 'art_type', 'music_type', 'exercise_type', 'leisure_type'] as field}
+						{@const category = field.replace('_type', '')}
+						{@const options = settings.settings.daily_type[category] || []}
+						{@const currentValue = formData[field as keyof typeof formData] as string}
+						{@const hasCurrent = currentValue && !options.includes(currentValue)}
 						<div>
 							<label for={field} class="mb-1 block text-sm font-medium text-zinc-400 capitalize"
-								>{field.replace('_type', '')}</label
+								>{category}</label
 							>
-							<input
-								type="text"
-								id={field}
-								bind:value={formData[field as keyof typeof formData]}
-								class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-							/>
+							{#if options.length > 0}
+								<select
+									id={field}
+									bind:value={formData[field as keyof typeof formData]}
+									class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+								>
+									<option value="">Select {category}</option>
+									{#if hasCurrent}
+										<option value={currentValue}>{currentValue} (current)</option>
+									{/if}
+									{#each options as opt}
+										<option value={opt}>{opt}</option>
+									{/each}
+								</select>
+							{:else}
+								<input
+									type="text"
+									id={field}
+									bind:value={formData[field as keyof typeof formData]}
+									class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+								/>
+							{/if}
 						</div>
 					{/each}
 				</div>
@@ -383,7 +402,7 @@
 					<button
 						type="submit"
 						disabled={isUploading}
-						class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
+						class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
 						>{isUploading ? 'Uploading...' : 'Save'}</button
 					>
 				</div>

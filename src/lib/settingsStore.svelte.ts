@@ -31,6 +31,7 @@ export type GlobalSettings = {
 	task_types: SettingItem[]; // Task Types
 	notes_types: SettingItem[]; // Note Colors (mostly just colors)
 	global_types: { accent: string }; // Global Accent
+	daily_type: Record<string, string[]>; // Daily Activity Types
 };
 
 // Default Settings
@@ -49,32 +50,57 @@ const defaultSettings: GlobalSettings = {
 		{ id: '3', label: 'Admin', color: 'bg-zinc-500' }
 	],
 	notes_types: PALETTE.map((p, i) => ({ id: i, color: p.hex })),
-	global_types: { accent: 'bg-indigo-600' }
+	global_types: { accent: 'bg-indigo-600' },
+	daily_type: {
+		work: [],
+		study: [],
+		culture: [],
+		art: [],
+		music: [],
+		exercise: [],
+		leisure: []
+	}
 };
 
 class SettingsStore {
 	settings = $state<GlobalSettings>(defaultSettings);
 	isLoading = $state(true);
+	private initPromise: Promise<void> | null = null;
 
 	constructor() { }
 
 	async init() {
+		// Prevent multiple concurrent init calls
+		if (this.initPromise) {
+			return this.initPromise;
+		}
+
+		this.initPromise = this._doInit();
+		try {
+			await this.initPromise;
+		} finally {
+			this.initPromise = null;
+		}
+	}
+
+	private async _doInit() {
 		this.isLoading = true;
 		const { data, error } = await supabase
 			.from('globalSettings')
 			.select('*')
+			.order('id', { ascending: false })
 			.limit(1)
 			.single();
 
 		if (data) {
-			// Merge with defaults to ensure structure
 			this.settings = {
 				id: data.id,
 				calls_types: data.calls_types || defaultSettings.calls_types,
 				project_types: data.project_types || defaultSettings.project_types,
 				task_types: data.task_types || defaultSettings.task_types,
 				notes_types: data.notes_types || defaultSettings.notes_types,
-				global_types: data.global_types || defaultSettings.global_types
+				global_types: data.global_types || defaultSettings.global_types,
+				daily_type: data.daily_type || defaultSettings.daily_type
 			};
 		} else if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows found"
 			console.error('Error fetching settings:', error);
@@ -92,23 +118,21 @@ class SettingsStore {
 			project_types: this.settings.project_types,
 			task_types: this.settings.task_types,
 			notes_types: this.settings.notes_types,
-			global_types: this.settings.global_types
+			global_types: this.settings.global_types,
+			daily_type: this.settings.daily_type
 		};
 
-		if (this.settings.id) {
-			const { error } = await supabase
-				.from('globalSettings')
-				.update(payload)
-				.eq('id', this.settings.id);
-			if (error) console.error('Error updating settings:', error);
-		} else {
-			const { data, error } = await supabase
-				.from('globalSettings')
-				.insert(payload)
-				.select()
-				.single();
-			if (error) console.error('Error creating settings:', error);
-			else if (data) this.settings.id = data.id;
+		// Always insert a new row (never update)
+		const { data, error } = await supabase
+			.from('globalSettings')
+			.insert(payload)
+			.select()
+			.single();
+
+		if (error) {
+			console.error('Error creating settings:', error);
+		} else if (data) {
+			this.settings.id = data.id;
 		}
 	}
 

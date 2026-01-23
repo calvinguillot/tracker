@@ -204,7 +204,7 @@
 				</button>
 			{/each}
 			<span class="ml-auto text-xs text-zinc-500">
-				Total: {notes.length}
+				Amount of notes: {notes.length}
 			</span>
 		</div>
 
@@ -215,16 +215,18 @@
 					style="background-color: {note.color || '#18181b'}"
 				>
 					<div class="flex flex-col gap-3">
-						<h3 class="text-lg font-bold text-zinc-100 break-words">
+						<h3 class="wrap-break-words text-lg font-bold text-zinc-100">
 							{note.title}
 						</h3>
-						
-						<div class="prose prose-invert prose-sm max-w-none text-zinc-300 break-words">
+
+						<div class="prose prose-sm max-w-none wrap-break-word text-zinc-300 prose-invert">
 							{@html formatBody(note.body)}
 						</div>
 					</div>
 
-					<div class="flex items-center justify-between gap-4 border-t border-zinc-800/50 pt-3 mt-auto">
+					<div
+						class="mt-auto flex items-center justify-between gap-4 border-t border-zinc-800/50 pt-3"
+					>
 						<div class="text-xs text-zinc-400/70">
 							{new Date(note.created_at).toLocaleDateString()}
 						</div>
