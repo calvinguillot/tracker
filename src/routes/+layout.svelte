@@ -72,7 +72,10 @@
 					style="--accent-color: {settings.getAccentLightHex()}"
 				>
 					{#each 'CG Tracker 2026'.split('') as char, i}
-						<span class="jiggle-char group-hover:text-[var(--accent-color)]" style="animation-delay: {i * 0.05}s">
+						<span
+							class="jiggle-char group-hover:text-[var(--accent-color)]"
+							style="animation-delay: {i * 0.05}s"
+						>
 							{char}
 						</span>
 					{/each}
@@ -80,7 +83,10 @@
 			</div>
 
 			{#if session}
-				<nav class="hidden items-center justify-center gap-2 md:flex" style="--accent-color: {settings.getAccentLightHex()}">
+				<nav
+					class="hidden items-center justify-center gap-2 md:flex"
+					style="--accent-color: {settings.getAccentLightHex()}"
+				>
 					<a
 						href="{base}/"
 						class="px-6 text-zinc-400 transition-colors hover:text-[var(--accent-color)]"
@@ -125,7 +131,10 @@
 					</a>
 				</nav>
 
-				<div class="hidden items-center justify-end gap-4 justify-self-end md:flex" style="--accent-color: {settings.getAccentLightHex()}">
+				<div
+					class="hidden items-center justify-end gap-4 justify-self-end md:flex"
+					style="--accent-color: {settings.getAccentLightHex()}"
+				>
 					<a
 						href="{base}/settings"
 						class="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-800/50 hover:text-[var(--accent-color)]"
@@ -170,7 +179,10 @@
 
 		<!-- Mobile Menu Overlay -->
 		{#if session && isMobileMenuOpen}
-			<div class="mb-8 flex flex-col gap-2 rounded-lg bg-zinc-900 p-4 md:hidden" style="--accent-color: {settings.getAccentLightHex()}">
+			<div
+				class="mb-8 flex flex-col gap-2 rounded-lg bg-zinc-900 p-4 md:hidden"
+				style="--accent-color: {settings.getAccentLightHex()}"
+			>
 				<a
 					href="{base}/"
 					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-[var(--accent-color)]"

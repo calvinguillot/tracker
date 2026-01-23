@@ -283,7 +283,7 @@
 			<div class="flex flex-wrap gap-2">
 				{#each settings.settings.notes_types as type, i}
 					<label
-						class="relative h-6 w-6 cursor-pointer rounded-full border border-zinc-700 transition-transform hover:scale-110 focus-within:ring-2 focus-within:ring-white"
+						class="relative h-6 w-6 cursor-pointer rounded-full border border-zinc-700 transition-transform focus-within:ring-2 focus-within:ring-white hover:scale-110"
 						style={`background-color: ${type.color};`}
 						title="Change Color"
 					>
