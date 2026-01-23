@@ -19,13 +19,13 @@
 		meals: null,
 		weight: null,
 		sickness: false,
-		work_type: '',
-		study_type: '',
-		culture_type: '',
-		art_type: '',
-		music_type: '',
-		exercise_type: '',
-		leisure_type: '',
+		work_type: [] as string[],
+		study_type: [] as string[],
+		culture_type: [] as string[],
+		art_type: [] as string[],
+		music_type: [] as string[],
+		exercise_type: [] as string[],
+		leisure_type: [] as string[],
 		calvin_day: false,
 		ihana: false,
 		call_family: false,
@@ -34,6 +34,24 @@
 		notes: '',
 		image: null
 	});
+
+	// Helper to parse stored value (could be string, array, or null) into array
+	function parseTypeValue(value: string | string[] | null | undefined): string[] {
+		if (!value) return [];
+		if (Array.isArray(value)) return value;
+		// Handle comma-separated string
+		return value.split(',').map(s => s.trim()).filter(Boolean);
+	}
+
+	// Helper to toggle a value in an array
+	function toggleTypeValue(field: 'work_type' | 'study_type' | 'culture_type' | 'art_type' | 'music_type' | 'exercise_type' | 'leisure_type', value: string) {
+		const current = formData[field];
+		if (current.includes(value)) {
+			formData[field] = current.filter(v => v !== value);
+		} else {
+			formData[field] = [...current, value];
+		}
+	}
 
 	$effect(() => {
 		if (isOpen) {
@@ -49,13 +67,13 @@
 					meals: entry.meals,
 					weight: entry.weight,
 					sickness: entry.sickness ?? false,
-					work_type: entry.work_type ?? '',
-					study_type: entry.study_type ?? '',
-					culture_type: entry.culture_type ?? '',
-					art_type: entry.art_type ?? '',
-					music_type: entry.music_type ?? '',
-					exercise_type: entry.exercise_type ?? '',
-					leisure_type: entry.leisure_type ?? '',
+					work_type: parseTypeValue(entry.work_type),
+					study_type: parseTypeValue(entry.study_type),
+					culture_type: parseTypeValue(entry.culture_type),
+					art_type: parseTypeValue(entry.art_type),
+					music_type: parseTypeValue(entry.music_type),
+					exercise_type: parseTypeValue(entry.exercise_type),
+					leisure_type: parseTypeValue(entry.leisure_type),
 					calvin_day: entry.calvin_day ?? false,
 					ihana: entry.ihana ?? false,
 					call_family: entry.call_family ?? false,
@@ -77,13 +95,13 @@
 					meals: null,
 					weight: null,
 					sickness: false,
-					work_type: '',
-					study_type: '',
-					culture_type: '',
-					art_type: '',
-					music_type: '',
-					exercise_type: '',
-					leisure_type: '',
+					work_type: [],
+					study_type: [],
+					culture_type: [],
+					art_type: [],
+					music_type: [],
+					exercise_type: [],
+					leisure_type: [],
 					calvin_day: false,
 					ihana: false,
 					call_family: false,
@@ -156,7 +174,19 @@
 			isUploading = false;
 		}
 
-		onSave({ ...formData, image: imagePath });
+		// Convert arrays back to comma-separated strings for storage
+		const dataToSave = {
+			...formData,
+			image: imagePath,
+			work_type: formData.work_type.join(', '),
+			study_type: formData.study_type.join(', '),
+			culture_type: formData.culture_type.join(', '),
+			art_type: formData.art_type.join(', '),
+			music_type: formData.music_type.join(', '),
+			exercise_type: formData.exercise_type.join(', '),
+			leisure_type: formData.leisure_type.join(', ')
+		};
+		onSave(dataToSave);
 	}
 
 	function handleBackgroundClick(e: MouseEvent) {
@@ -313,38 +343,56 @@
 					</div>
 				</div>
 
-				<!-- Text Fields -->
+				<!-- Activity Type Fields (Multi-select) -->
 				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 					{#each ['work_type', 'study_type', 'culture_type', 'art_type', 'music_type', 'exercise_type', 'leisure_type'] as field}
 						{@const category = field.replace('_type', '')}
 						{@const options = settings.settings.daily_type[category] || []}
-						{@const currentValue = formData[field as keyof typeof formData] as string}
-						{@const hasCurrent = currentValue && !options.includes(currentValue)}
+						{@const typedField = field as 'work_type' | 'study_type' | 'culture_type' | 'art_type' | 'music_type' | 'exercise_type' | 'leisure_type'}
+						{@const selectedValues = formData[typedField]}
+						{@const currentValues = selectedValues.filter(v => !options.includes(v))}
 						<div>
-							<label for={field} class="mb-1 block text-sm font-medium text-zinc-400 capitalize"
-								>{category}</label
+							<span class="mb-2 block text-sm font-medium text-zinc-400 capitalize"
+								>{category}</span
 							>
-							{#if options.length > 0}
-								<select
-									id={field}
-									bind:value={formData[field as keyof typeof formData]}
-									class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-								>
-									<option value="">Select {category}</option>
-									{#if hasCurrent}
-										<option value={currentValue}>{currentValue} (current)</option>
-									{/if}
-									{#each options as opt}
-										<option value={opt}>{opt}</option>
+							{#if options.length > 0 || currentValues.length > 0}
+								<div class="flex flex-wrap gap-2">
+									<!-- Show current values that aren't in options list -->
+									{#each currentValues as currentVal}
+										<label
+											class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors {selectedValues.includes(currentVal)
+												? 'border-amber-500 bg-amber-500/20 text-amber-300'
+												: 'border-zinc-600 bg-zinc-800 text-zinc-300 hover:border-zinc-500'}"
+										>
+											<input
+												type="checkbox"
+												checked={selectedValues.includes(currentVal)}
+												onchange={() => toggleTypeValue(typedField, currentVal)}
+												class="sr-only"
+											/>
+											<span>{currentVal}</span>
+											<span class="text-xs text-amber-400">(current)</span>
+										</label>
 									{/each}
-								</select>
+									<!-- Show options from settings -->
+									{#each options as opt}
+										<label
+											class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors {selectedValues.includes(opt)
+												? 'border-indigo-500 bg-indigo-500/20 text-indigo-300'
+												: 'border-zinc-600 bg-zinc-800 text-zinc-300 hover:border-zinc-500'}"
+										>
+											<input
+												type="checkbox"
+												checked={selectedValues.includes(opt)}
+												onchange={() => toggleTypeValue(typedField, opt)}
+												class="sr-only"
+											/>
+											<span>{opt}</span>
+										</label>
+									{/each}
+								</div>
 							{:else}
-								<input
-									type="text"
-									id={field}
-									bind:value={formData[field as keyof typeof formData]}
-									class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-								/>
+								<p class="text-sm text-zinc-500 italic">No options configured in settings</p>
 							{/if}
 						</div>
 					{/each}
