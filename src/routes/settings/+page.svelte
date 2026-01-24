@@ -176,8 +176,8 @@
 			</div>
 			<div class="space-y-3">
 				{#each settings.settings.project_types as type, i}
-					<div class="flex items-center gap-3">
-						<div class="flex-1">
+					<div class="flex flex-wrap items-center gap-3 sm:flex-nowrap">
+						<div class="min-w-[200px] flex-1">
 							<input
 								type="text"
 								bind:value={type.label}
@@ -188,7 +188,7 @@
 
 						<!-- Color Picker -->
 						<div
-							class="flex items-center gap-1 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-1.5"
+							class="flex flex-wrap items-center justify-center gap-1 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-1.5 sm:justify-start"
 						>
 							{#each PALETTE as color}
 								<button
@@ -226,8 +226,8 @@
 			</div>
 			<div class="space-y-3">
 				{#each settings.settings.task_types as type, i}
-					<div class="flex items-center gap-3">
-						<div class="flex-1">
+					<div class="flex flex-wrap items-center gap-3 sm:flex-nowrap">
+						<div class="min-w-[200px] flex-1">
 							<input
 								type="text"
 								bind:value={type.label}
@@ -238,7 +238,7 @@
 
 						<!-- Color Picker -->
 						<div
-							class="flex items-center gap-1 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-1.5"
+							class="flex flex-wrap items-center justify-center gap-1 rounded-lg border border-zinc-700/50 bg-zinc-800/50 p-1.5 sm:justify-start"
 						>
 							{#each PALETTE as color}
 								<button
