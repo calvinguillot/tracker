@@ -203,6 +203,33 @@
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(' ');
 	}
+
+	function getChecklistCounts(checklist: any) {
+		if (!checklist) return { total: 0, completed: 0 };
+
+		// If it's the new format (array of checklists)
+		if (Array.isArray(checklist) && checklist.length > 0 && 'items' in checklist[0]) {
+			let total = 0;
+			let completed = 0;
+			checklist.forEach((list: any) => {
+				if (list.items) {
+					total += list.items.length;
+					completed += list.items.filter((i: any) => i.completed).length;
+				}
+			});
+			return { total, completed };
+		}
+
+		// Fallback for old/flat format
+		if (Array.isArray(checklist) && checklist.length > 0) {
+			return {
+				total: checklist.length,
+				completed: checklist.filter((i: any) => i.completed).length
+			};
+		}
+
+		return { total: 0, completed: 0 };
+	}
 </script>
 
 <TaskModal
@@ -303,12 +330,15 @@
 										>{settings.getTaskType(task.type)?.label ?? task.type}</span
 									>
 								{/if}
-								{#if task.checklist && task.checklist.length > 0}
-									<span class="text-zinc-500">•</span>
-									<ListChecks class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`} />
-									<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
-										{task.checklist.filter((i: any) => i.completed).length}/{task.checklist.length}
-									</span>
+								{#if task.checklist}
+									{@const counts = getChecklistCounts(task.checklist)}
+									{#if counts.total > 0}
+										<span class="text-zinc-500">•</span>
+										<ListChecks class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`} />
+										<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
+											{counts.completed}/{counts.total}
+										</span>
+									{/if}
 								{/if}
 							</div>
 						</div>

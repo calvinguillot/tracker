@@ -12,7 +12,7 @@
 		deadline_at: '',
 		completed_at: null as string | null,
 		color: '#000000',
-		checklist: null as { text: string; completed: boolean }[] | null
+		checklist: [] as { id: string; title: string; items: { text: string; completed: boolean }[] }[]
 	});
 
 	const statusOptions = [
@@ -32,7 +32,13 @@
 					deadline_at: entry.deadline_at || '',
 					completed_at: entry.completed_at || null,
 					color: entry.color || '#000000',
-					checklist: entry.checklist || null
+					// Handle legacy flat checklist by wrapping it
+					checklist:
+						Array.isArray(entry.checklist) && entry.checklist.length > 0
+							? 'items' in entry.checklist[0]
+								? entry.checklist
+								: [{ id: crypto.randomUUID(), title: 'Checklist', items: entry.checklist }]
+							: []
 				};
 			} else {
 				// Reset
@@ -44,7 +50,7 @@
 					deadline_at: '',
 					completed_at: null,
 					color: '#000000',
-					checklist: null
+					checklist: []
 				};
 			}
 		}
@@ -84,38 +90,46 @@
 	}
 
 	function createChecklist() {
-		formData.checklist = [];
+		formData.checklist = [
+			...formData.checklist,
+			{ id: crypto.randomUUID(), title: 'New Checklist', items: [] }
+		];
 	}
 
-	function addChecklistItem() {
-		if (!formData.checklist) formData.checklist = [];
-		formData.checklist = [...formData.checklist, { text: '', completed: false }];
-	}
-
-	function removeChecklistItem(index: number) {
-		if (!formData.checklist) return;
+	function removeChecklist(index: number) {
 		formData.checklist = formData.checklist.filter((_, i) => i !== index);
-		if (formData.checklist.length === 0) {
-			formData.checklist = null;
-		}
 	}
 
-	function toggleChecklistItem(index: number) {
-		if (!formData.checklist) return;
-		formData.checklist[index].completed = !formData.checklist[index].completed;
+	function addChecklistItem(checklistIndex: number) {
+		const list = formData.checklist[checklistIndex];
+		list.items = [...list.items, { text: '', completed: false }];
+		formData.checklist[checklistIndex] = list;
 	}
 
-	function moveChecklistItem(index: number, direction: 'up' | 'down') {
-		if (!formData.checklist) return;
+	function removeChecklistItem(checklistIndex: number, itemIndex: number) {
+		const list = formData.checklist[checklistIndex];
+		list.items = list.items.filter((_, i) => i !== itemIndex);
+		formData.checklist[checklistIndex] = list;
+	}
 
-		const newIndex = direction === 'up' ? index - 1 : index + 1;
-		if (newIndex < 0 || newIndex >= formData.checklist.length) return;
+	function toggleChecklistItem(checklistIndex: number, itemIndex: number) {
+		const list = formData.checklist[checklistIndex];
+		list.items[itemIndex].completed = !list.items[itemIndex].completed;
+		formData.checklist[checklistIndex] = list;
+	}
 
-		const item = formData.checklist[index];
-		const newChecklist = [...formData.checklist];
-		newChecklist.splice(index, 1);
-		newChecklist.splice(newIndex, 0, item);
-		formData.checklist = newChecklist;
+	function moveChecklistItem(checklistIndex: number, itemIndex: number, direction: 'up' | 'down') {
+		const list = formData.checklist[checklistIndex];
+		const newIndex = direction === 'up' ? itemIndex - 1 : itemIndex + 1;
+		if (newIndex < 0 || newIndex >= list.items.length) return;
+
+		const item = list.items[itemIndex];
+		const newItems = [...list.items];
+		newItems.splice(itemIndex, 1);
+		newItems.splice(newIndex, 0, item);
+
+		list.items = newItems;
+		formData.checklist[checklistIndex] = list;
 	}
 	function handleTypeChange() {
 		if (formData.type) {
@@ -246,77 +260,102 @@
 					></textarea>
 				</div>
 
-				<!-- Checklist -->
-				<div>
-					<div class="mb-2 flex items-center justify-between">
-						<span class="block text-sm font-medium text-zinc-400">Checklist</span>
-						{#if !formData.checklist}
-							<button
-								type="button"
-								onclick={createChecklist}
-								class="text-xs transition-colors hover:brightness-125"
-								style="color: {settings.getAccentLightHex()}"
-							>
-								+ Create Checklist
-							</button>
-						{/if}
+				<!-- Checklists -->
+				<div class="space-y-4">
+					<div class="flex items-center justify-between">
+						<span class="block text-sm font-medium text-zinc-400">Checklists</span>
+						<button
+							type="button"
+							onclick={createChecklist}
+							class="text-xs transition-colors hover:brightness-125"
+							style="color: {settings.getAccentLightHex()}"
+						>
+							+ Add Checklist
+						</button>
 					</div>
 
-					{#if formData.checklist}
-						<div class="space-y-2">
-							{#each formData.checklist as item, i}
-								<div class="flex items-center gap-2">
-									<button
-										type="button"
-										onclick={() => toggleChecklistItem(i)}
-										class="text-zinc-400 hover:text-zinc-200"
-									>
-										{#if item.completed}
-											<CheckSquare class="h-5 w-5 text-emerald-500" />
-										{:else}
-											<Square class="h-5 w-5" />
-										{/if}
-									</button>
-									<input
-										type="text"
-										bind:value={item.text}
-										placeholder="Checklist item..."
-										class={`w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${item.completed ? 'text-zinc-500 line-through' : ''}`}
-									/>
-									<div class="flex items-center gap-1">
+					{#if formData.checklist && formData.checklist.length > 0}
+						<div class="space-y-6">
+							{#each formData.checklist as list, listIndex}
+								<div class="rounded-lg border border-zinc-800 bg-zinc-800/30 p-4">
+									<div class="mb-3 flex items-center justify-between gap-2">
+										<input
+											type="text"
+											bind:value={list.title}
+											placeholder="Checklist Title"
+											class="w-full bg-transparent text-sm font-bold text-zinc-200 placeholder-zinc-600 focus:outline-none"
+										/>
 										<button
 											type="button"
-											onclick={() => moveChecklistItem(i, 'up')}
-											disabled={i === 0}
-											class="p-1 text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
-										>
-											<ArrowUp class="h-4 w-4" />
-										</button>
-										<button
-											type="button"
-											onclick={() => moveChecklistItem(i, 'down')}
-											disabled={i === (formData.checklist?.length ?? 0) - 1}
-											class="p-1 text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
-										>
-											<ArrowDown class="h-4 w-4" />
-										</button>
-										<button
-											type="button"
-											onclick={() => removeChecklistItem(i)}
-											class="p-1 text-red-500 hover:text-red-400"
+											onclick={() => removeChecklist(listIndex)}
+											class="text-zinc-600 hover:text-red-400"
+											title="Remove Checklist"
 										>
 											<Trash2 class="h-4 w-4" />
 										</button>
 									</div>
+
+									<div class="space-y-2">
+										{#each list.items as item, itemIndex}
+											<div class="flex items-center gap-2">
+												<button
+													type="button"
+													onclick={() => toggleChecklistItem(listIndex, itemIndex)}
+													class="text-zinc-400 hover:text-zinc-200"
+												>
+													{#if item.completed}
+														<CheckSquare class="h-5 w-5 text-emerald-500" />
+													{:else}
+														<Square class="h-5 w-5" />
+													{/if}
+												</button>
+												<input
+													type="text"
+													bind:value={item.text}
+													placeholder="Item description..."
+													class={`w-full rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-sm text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${item.completed ? 'text-zinc-500 line-through' : ''}`}
+												/>
+												<div class="flex items-center gap-1">
+													<button
+														type="button"
+														onclick={() => moveChecklistItem(listIndex, itemIndex, 'up')}
+														disabled={itemIndex === 0}
+														class="p-1 text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+													>
+														<ArrowUp class="h-3 w-3" />
+													</button>
+													<button
+														type="button"
+														onclick={() => moveChecklistItem(listIndex, itemIndex, 'down')}
+														disabled={itemIndex === list.items.length - 1}
+														class="p-1 text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+													>
+														<ArrowDown class="h-3 w-3" />
+													</button>
+													<button
+														type="button"
+														onclick={() => removeChecklistItem(listIndex, itemIndex)}
+														class="p-1 text-zinc-500 hover:text-red-400"
+													>
+														<Trash2 class="h-3 w-3" />
+													</button>
+												</div>
+											</div>
+										{/each}
+										<button
+											type="button"
+											onclick={() => addChecklistItem(listIndex)}
+											class="mt-2 flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300"
+										>
+											<Plus class="h-3 w-3" /> Add Item
+										</button>
+									</div>
 								</div>
 							{/each}
-							<button
-								type="button"
-								onclick={addChecklistItem}
-								class="mt-2 flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-200"
-							>
-								<Plus class="h-4 w-4" /> Add Item
-							</button>
+						</div>
+					{:else}
+						<div class="rounded-lg border border-dashed border-zinc-800 p-4 text-center">
+							<p class="text-sm text-zinc-500">No checklists yet</p>
 						</div>
 					{/if}
 				</div>

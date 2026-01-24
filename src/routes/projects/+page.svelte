@@ -2,7 +2,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Loader, Plus, ArrowUp, ArrowDown, List, Calendar } from 'lucide-svelte';
+	import { Loader, Plus, ArrowUp, ArrowDown, List, Calendar, ListChecks } from 'lucide-svelte';
 	import { settings } from '$lib/settingsStore.svelte';
 	import ProjectModal from '$lib/components/ProjectModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
@@ -19,6 +19,7 @@
 		end_at: string | null;
 		colour: string | null;
 		type: number | null;
+		checklist: any;
 	};
 
 	const statusLabels: Record<number, string> = {
@@ -234,6 +235,34 @@
 				return 'bg-zinc-800 text-zinc-400';
 		}
 	};
+
+	function getChecklistCounts(checklist: any) {
+		if (!checklist) return { total: 0, completed: 0 };
+
+		// If it's the new format (array of checklists)
+		if (Array.isArray(checklist) && checklist.length > 0 && 'items' in checklist[0]) {
+			let total = 0;
+			let completed = 0;
+			checklist.forEach((list: any) => {
+				if (list.items) {
+					total += list.items.length;
+					completed += list.items.filter((i: any) => i.completed).length;
+				}
+			});
+			return { total, completed };
+		}
+
+		// Fallback for old/flat format if any (though projects didn't use it before)
+		if (Array.isArray(checklist) && checklist.length > 0) {
+			// flat list presumably
+			return {
+				total: checklist.length,
+				completed: checklist.filter((i: any) => i.completed).length
+			};
+		}
+
+		return { total: 0, completed: 0 };
+	}
 </script>
 
 <ProjectModal
@@ -348,6 +377,34 @@
 										<span class={`font-medium ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
 											>{t.label}</span
 										>
+										{#if project.checklist}
+											{@const counts = getChecklistCounts(project.checklist)}
+											{#if counts.total > 0}
+												<span class="text-zinc-600">•</span>
+												<div class="flex items-center gap-1">
+													<ListChecks
+														class={`h-3.5 w-3.5 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
+													/>
+													<span class={archived ? 'text-zinc-600' : 'text-zinc-500'}>
+														{counts.completed}/{counts.total}
+													</span>
+												</div>
+											{/if}
+										{/if}
+									</div>
+								{/if}
+							{:else if project.checklist}
+								{@const counts = getChecklistCounts(project.checklist)}
+								{#if counts.total > 0}
+									<div class="flex items-center gap-2 text-xs text-zinc-500">
+										<div class="flex items-center gap-1">
+											<ListChecks
+												class={`h-3.5 w-3.5 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
+											/>
+											<span class={archived ? 'text-zinc-600' : 'text-zinc-500'}>
+												{counts.completed}/{counts.total}
+											</span>
+										</div>
 									</div>
 								{/if}
 							{/if}
