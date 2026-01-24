@@ -125,19 +125,20 @@
 	// Activity Statistics
 	let activityStats = $derived.by(() => {
 		const stats = {
-			exercise: { label: 'Exercise', count: 0, icon: '🏃' },
 			ihana: { label: 'Ihana', count: 0, icon: '❤️' },
 			calvin_day: { label: 'Calvin Day', count: 0, icon: '✨' },
+			exercise: { label: 'Exercise', count: 0, icon: '🏃' },
+			call_family: { label: 'Family Calls', count: 0, icon: '📞' },
+			cry: { label: 'Cry', count: 0, icon: '😢' },
+			loving: { label: 'Loving', count: 0, icon: '💌' },
+			friends: { label: 'Friends', count: 0, icon: '👥' },
 			sickness: { label: 'Sick Days', count: 0, icon: '🤒' },
 			work: { label: 'Work', count: 0, icon: '💼' },
 			study: { label: 'Study', count: 0, icon: '📚' },
 			culture: { label: 'Culture', count: 0, icon: '🎭' },
 			art: { label: 'Art', count: 0, icon: '🎨' },
 			music: { label: 'Music', count: 0, icon: '🎵' },
-			leisure: { label: 'Leisure', count: 0, icon: '🎮' },
-			call_family: { label: 'Family Calls', count: 0, icon: '📞' },
-			cry: { label: 'Cry', count: 0, icon: '😢' },
-			sex: { label: 'Sex', count: 0, icon: '💌' }
+			leisure: { label: 'Leisure', count: 0, icon: '🎮' }
 		};
 
 		// Filter data based on toggle
@@ -165,7 +166,8 @@
 			if (d.leisure_type && d.leisure_type.trim()) stats.leisure.count++;
 			if (d.call_family === true) stats.call_family.count++;
 			if (d.cry === true) stats.cry.count++;
-			if (d.sex === true) stats.sex.count++;
+			if (d.loving === true) stats.loving.count++;
+			if (d.friends === true) stats.friends.count++;
 		}
 
 		return stats;
@@ -198,7 +200,7 @@
 		const { data: d, error } = await supabase
 			.from('dailyTracking')
 			.select(
-				'created_at, mood, energy, physical, sleep, meals, weight, exercise_type, ihana, calvin_day, sickness, work_type, study_type, culture_type, art_type, music_type, leisure_type, call_family, cry, sex'
+				'created_at, mood, energy, physical, sleep, meals, weight, exercise_type, ihana, calvin_day, sickness, work_type, study_type, culture_type, art_type, music_type, leisure_type, call_family, cry, loving, friends'
 			)
 			.order('created_at', { ascending: true });
 

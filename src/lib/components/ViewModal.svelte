@@ -139,11 +139,18 @@
 								Cry
 							</span>
 						{/if}
-						{#if entry.sex}
+						{#if entry.loving}
 							<span
 								class="inline-flex items-center rounded-full border border-red-900/50 bg-red-900/30 px-2.5 py-0.5 text-xs font-medium text-red-400"
 							>
-								Sex
+								Loving
+							</span>
+						{/if}
+						{#if entry.friends}
+							<span
+								class="inline-flex items-center rounded-full border border-purple-900/50 bg-purple-900/30 px-2.5 py-0.5 text-xs font-medium text-purple-400"
+							>
+								Friends
 							</span>
 						{/if}
 					</div>

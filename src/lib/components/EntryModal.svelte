@@ -30,7 +30,8 @@
 		ihana: false,
 		call_family: false,
 		cry: false,
-		sex: false,
+		loving: false,
+		friends: false,
 		notes: '',
 		image: null
 	});
@@ -40,14 +41,27 @@
 		if (!value) return [];
 		if (Array.isArray(value)) return value;
 		// Handle comma-separated string
-		return value.split(',').map(s => s.trim()).filter(Boolean);
+		return value
+			.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean);
 	}
 
 	// Helper to toggle a value in an array
-	function toggleTypeValue(field: 'work_type' | 'study_type' | 'culture_type' | 'art_type' | 'music_type' | 'exercise_type' | 'leisure_type', value: string) {
+	function toggleTypeValue(
+		field:
+			| 'work_type'
+			| 'study_type'
+			| 'culture_type'
+			| 'art_type'
+			| 'music_type'
+			| 'exercise_type'
+			| 'leisure_type',
+		value: string
+	) {
 		const current = formData[field];
 		if (current.includes(value)) {
-			formData[field] = current.filter(v => v !== value);
+			formData[field] = current.filter((v) => v !== value);
 		} else {
 			formData[field] = [...current, value];
 		}
@@ -78,7 +92,8 @@
 					ihana: entry.ihana ?? false,
 					call_family: entry.call_family ?? false,
 					cry: entry.cry ?? false,
-					sex: entry.sex ?? false,
+					loving: entry.loving ?? false,
+					friends: entry.friends ?? false,
 					notes: entry.notes ?? '',
 					image: entry.image ?? null
 				};
@@ -106,7 +121,8 @@
 					ihana: false,
 					call_family: false,
 					cry: false,
-					sex: false,
+					loving: false,
+					friends: false,
 					notes: '',
 					image: null
 				};
@@ -290,15 +306,6 @@
 					<div class="flex items-center">
 						<input
 							type="checkbox"
-							id="sickness"
-							bind:checked={formData.sickness}
-							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
-						/>
-						<label for="sickness" class="ml-2 block text-sm text-zinc-300">Sickness</label>
-					</div>
-					<div class="flex items-center">
-						<input
-							type="checkbox"
 							id="calvin_day"
 							bind:checked={formData.calvin_day}
 							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
@@ -335,11 +342,29 @@
 					<div class="flex items-center">
 						<input
 							type="checkbox"
-							id="sex"
-							bind:checked={formData.sex}
+							id="loving"
+							bind:checked={formData.loving}
 							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
 						/>
-						<label for="sex" class="ml-2 block text-sm text-zinc-300">Sex</label>
+						<label for="loving" class="ml-2 block text-sm text-zinc-300">Loving</label>
+					</div>
+					<div class="flex items-center">
+						<input
+							type="checkbox"
+							id="friends"
+							bind:checked={formData.friends}
+							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
+						/>
+						<label for="friends" class="ml-2 block text-sm text-zinc-300">Friends</label>
+					</div>
+					<div class="flex items-center">
+						<input
+							type="checkbox"
+							id="sickness"
+							bind:checked={formData.sickness}
+							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
+						/>
+						<label for="sickness" class="ml-2 block text-sm text-zinc-300">Sickness</label>
 					</div>
 				</div>
 
@@ -348,19 +373,27 @@
 					{#each ['work_type', 'study_type', 'culture_type', 'art_type', 'music_type', 'exercise_type', 'leisure_type'] as field}
 						{@const category = field.replace('_type', '')}
 						{@const options = settings.settings.daily_type[category] || []}
-						{@const typedField = field as 'work_type' | 'study_type' | 'culture_type' | 'art_type' | 'music_type' | 'exercise_type' | 'leisure_type'}
+						{@const typedField = field as
+							| 'work_type'
+							| 'study_type'
+							| 'culture_type'
+							| 'art_type'
+							| 'music_type'
+							| 'exercise_type'
+							| 'leisure_type'}
 						{@const selectedValues = formData[typedField]}
-						{@const currentValues = selectedValues.filter(v => !options.includes(v))}
+						{@const currentValues = selectedValues.filter((v) => !options.includes(v))}
 						<div>
-							<span class="mb-2 block text-sm font-medium text-zinc-400 capitalize"
-								>{category}</span
+							<span class="mb-2 block text-sm font-medium text-zinc-400 capitalize">{category}</span
 							>
 							{#if options.length > 0 || currentValues.length > 0}
 								<div class="flex flex-wrap gap-2">
 									<!-- Show current values that aren't in options list -->
 									{#each currentValues as currentVal}
 										<label
-											class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors {selectedValues.includes(currentVal)
+											class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors {selectedValues.includes(
+												currentVal
+											)
 												? 'border-amber-500 bg-amber-500/20 text-amber-300'
 												: 'border-zinc-600 bg-zinc-800 text-zinc-300 hover:border-zinc-500'}"
 										>
@@ -377,7 +410,9 @@
 									<!-- Show options from settings -->
 									{#each options as opt}
 										<label
-											class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors {selectedValues.includes(opt)
+											class="flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors {selectedValues.includes(
+												opt
+											)
 												? 'border-indigo-500 bg-indigo-500/20 text-indigo-300'
 												: 'border-zinc-600 bg-zinc-800 text-zinc-300 hover:border-zinc-500'}"
 										>

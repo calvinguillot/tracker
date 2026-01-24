@@ -18,8 +18,7 @@
 	const statusOptions = [
 		{ value: 'todo', label: 'To Do' },
 		{ value: 'in_progress', label: 'In Progress' },
-		{ value: 'done', label: 'Done' },
-		{ value: 'archived', label: 'Archived' }
+		{ value: 'done', label: 'Done' }
 	];
 
 	$effect(() => {
@@ -197,7 +196,7 @@
 							</select>
 							{#if formData.color}
 								<div
-									class="h-8 w-8 flex-shrink-0 rounded-full border border-zinc-600 shadow-sm"
+									class="h-8 w-8 shrink-0 rounded-full border border-zinc-600 shadow-sm"
 									style={formData.color.startsWith('#')
 										? `background-color: ${formData.color}`
 										: ''}
@@ -348,9 +347,8 @@
 					>
 					<button
 						type="submit"
-						class="rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-						style="background-color: {settings.getAccentHex()}"
-						>Save</button
+						class="rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2"
+						style="background-color: {settings.getAccentHex()}">Save</button
 					>
 				</div>
 			</form>

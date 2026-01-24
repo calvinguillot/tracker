@@ -125,7 +125,8 @@
 		'ihana',
 		'call_family',
 		'cry',
-		'sex',
+		'loving',
+		'friends',
 		'notes',
 		'image'
 	];
