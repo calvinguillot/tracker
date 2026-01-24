@@ -2,7 +2,16 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Loader, Plus, ArrowUp, ArrowDown, List, Calendar, ListChecks } from 'lucide-svelte';
+	import {
+		Loader,
+		Plus,
+		ArrowUp,
+		ArrowDown,
+		List,
+		Calendar,
+		ListChecks,
+		Link as LinkIcon
+	} from 'lucide-svelte';
 	import { settings } from '$lib/settingsStore.svelte';
 	import ProjectModal from '$lib/components/ProjectModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
@@ -20,6 +29,7 @@
 		colour: string | null;
 		type: number | null;
 		checklist: any;
+		links: any;
 	};
 
 	const statusLabels: Record<number, string> = {
@@ -377,36 +387,34 @@
 										<span class={`font-medium ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
 											>{t.label}</span
 										>
-										{#if project.checklist}
-											{@const counts = getChecklistCounts(project.checklist)}
-											{#if counts.total > 0}
-												<span class="text-zinc-600">•</span>
-												<div class="flex items-center gap-1">
-													<ListChecks
-														class={`h-3.5 w-3.5 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
-													/>
-													<span class={archived ? 'text-zinc-600' : 'text-zinc-500'}>
-														{counts.completed}/{counts.total}
-													</span>
-												</div>
-											{/if}
-										{/if}
 									</div>
 								{/if}
-							{:else if project.checklist}
-								{@const counts = getChecklistCounts(project.checklist)}
-								{#if counts.total > 0}
-									<div class="flex items-center gap-2 text-xs text-zinc-500">
+							{:else if project.checklist || (project.links && project.links.length > 0)}
+								<div class="flex items-center gap-3 text-xs text-zinc-500">
+									{#if project.checklist}
+										{@const counts = getChecklistCounts(project.checklist)}
+										{#if counts.total > 0}
+											<div class="flex items-center gap-1">
+												<ListChecks
+													class={`h-3.5 w-3.5 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
+												/>
+												<span class={archived ? 'text-zinc-600' : 'text-zinc-500'}>
+													{counts.completed}/{counts.total}
+												</span>
+											</div>
+										{/if}
+									{/if}
+									{#if project.links && project.links.length > 0}
 										<div class="flex items-center gap-1">
-											<ListChecks
+											<LinkIcon
 												class={`h-3.5 w-3.5 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
 											/>
 											<span class={archived ? 'text-zinc-600' : 'text-zinc-500'}>
-												{counts.completed}/{counts.total}
+												{project.links.length}
 											</span>
 										</div>
-									</div>
-								{/if}
+									{/if}
+								</div>
 							{/if}
 						</div>
 

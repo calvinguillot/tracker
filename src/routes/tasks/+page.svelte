@@ -2,7 +2,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Loader, Plus, ArrowUp, ArrowDown, ListChecks } from 'lucide-svelte';
+	import { Loader, Plus, ArrowUp, ArrowDown, ListChecks, Link as LinkIcon } from 'lucide-svelte';
 	import TaskModal from '$lib/components/TaskModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
@@ -18,6 +18,7 @@
 		body: string | null;
 		checklist: any;
 		color: string | null;
+		links: any;
 	};
 
 	let session = $state<Session | null>(null);
@@ -31,8 +32,14 @@
 	let sortField = $state<SortField>('deadline');
 	let sortDirection = $state<'asc' | 'desc'>('asc');
 
+	let filterType = $state('all');
+
+	let filteredTasks = $derived(
+		filterType === 'all' ? tasks : tasks.filter((t) => t.type === filterType)
+	);
+
 	let sortedTasks = $derived(
-		[...tasks].sort((a, b) => {
+		[...filteredTasks].sort((a, b) => {
 			const modifier = sortDirection === 'asc' ? 1 : -1;
 
 			if (sortField === 'title') {
@@ -269,6 +276,20 @@
 	{:else}
 		<!-- Sorting Controls -->
 		<div class="mb-4 flex flex-wrap items-center gap-4 text-sm">
+			<div class="flex items-center gap-2">
+				<span class="text-zinc-500">Filter:</span>
+				<select
+					bind:value={filterType}
+					class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
+				>
+					<option value="all">All Tasks</option>
+					{#each settings.settings.task_types as type}
+						<option value={type.id}>{type.label}</option>
+					{/each}
+				</select>
+			</div>
+			<div class="h-4 w-px bg-zinc-800"></div>
+
 			<span class="text-zinc-500">Sort by:</span>
 			{#each ['title', 'deadline', 'created', 'status', 'completed'] as field}
 				<button
@@ -339,6 +360,13 @@
 											{counts.completed}/{counts.total}
 										</span>
 									{/if}
+								{/if}
+								{#if task.links && task.links.length > 0}
+									<span class="text-zinc-500">•</span>
+									<LinkIcon class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`} />
+									<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
+										{task.links.length}
+									</span>
 								{/if}
 							</div>
 						</div>

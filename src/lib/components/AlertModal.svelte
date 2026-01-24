@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { alertState, closeAlert } from '$lib/alertStore.svelte';
+	import { fade } from 'svelte/transition';
+	import { settings } from '$lib/settingsStore.svelte';
 
 	function handleBackgroundClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) {
@@ -30,6 +32,7 @@
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
+		transition:fade={{ duration: settings.getTransitionDuration() }}
 	>
 		<div
 			class="flex w-full max-w-sm flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl"

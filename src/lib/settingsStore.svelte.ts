@@ -30,7 +30,7 @@ export type GlobalSettings = {
 	project_types: SettingItem[]; // Project Types
 	task_types: SettingItem[]; // Task Types
 	notes_types: SettingItem[]; // Note Colors (mostly just colors)
-	global_types: { accent: string }; // Global Accent
+	global_types: { accent: string; transition_duration: number }; // Global Accent and Transition
 	daily_type: Record<string, string[]>; // Daily Activity Types
 };
 
@@ -50,7 +50,7 @@ const defaultSettings: GlobalSettings = {
 		{ id: '3', label: 'Admin', color: 'bg-zinc-500' }
 	],
 	notes_types: PALETTE.map((p, i) => ({ id: i, color: p.hex })),
-	global_types: { accent: 'bg-indigo-600' },
+	global_types: { accent: 'bg-indigo-600', transition_duration: 200 },
 	daily_type: {
 		work: [],
 		study: [],
@@ -164,6 +164,11 @@ class SettingsStore {
 		const hex = this.getAccentHex();
 		// Lighten the color by ~20% for hover/text states
 		return this.lightenColor(hex, 0.3);
+	}
+
+	// Get transition duration
+	getTransitionDuration(): number {
+		return this.settings.global_types.transition_duration ?? 200;
 	}
 
 	private lightenColor(hex: string, percent: number): string {

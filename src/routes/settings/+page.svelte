@@ -8,6 +8,9 @@
 
 	onMount(async () => {
 		await settings.init();
+		if (settings.settings.global_types.transition_duration === undefined) {
+			settings.settings.global_types.transition_duration = 200;
+		}
 		isLoading = false;
 	});
 
@@ -95,17 +98,33 @@
 		<!-- Global Accent -->
 		<section class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6">
 			<h3 class="mb-4 text-lg font-semibold text-zinc-100">Global Settings</h3>
-			<div class="flex items-center gap-4">
-				<span class="text-sm font-medium text-zinc-400">Accent Color</span>
-				<div class="flex flex-wrap gap-2">
-					{#each PALETTE as color}
-						<button
-							class="h-6 w-6 rounded-full border border-zinc-700 transition-transform hover:scale-110 focus:ring-2 focus:ring-white focus:outline-none"
-							style={`background-color: ${color.hex}; ${settings.settings.global_types.accent === color.class ? 'border-color: white; transform: scale(1.1);' : ''}`}
-							onclick={() => (settings.settings.global_types.accent = color.class)}
-							title={color.name}
-						></button>
-					{/each}
+			<div class="space-y-6">
+				<div class="flex items-center gap-4">
+					<span class="text-sm font-medium text-zinc-400">Accent Color</span>
+					<div class="flex flex-wrap gap-2">
+						{#each PALETTE as color}
+							<button
+								class="h-6 w-6 rounded-full border border-zinc-700 transition-transform hover:scale-110 focus:ring-2 focus:ring-white focus:outline-none"
+								style={`background-color: ${color.hex}; ${settings.settings.global_types.accent === color.class ? 'border-color: white; transform: scale(1.1);' : ''}`}
+								onclick={() => (settings.settings.global_types.accent = color.class)}
+								title={color.name}
+							></button>
+						{/each}
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4">
+					<label for="transition_duration" class="text-sm font-medium text-zinc-400"
+						>Transition Duration (ms)</label
+					>
+					<input
+						type="number"
+						id="transition_duration"
+						bind:value={settings.settings.global_types.transition_duration}
+						class="w-24 rounded-md border border-zinc-700 bg-zinc-800 p-2 text-sm text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+						min="0"
+						step="50"
+					/>
 				</div>
 			</div>
 		</section>

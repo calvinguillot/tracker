@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { settings } from '$lib/settingsStore.svelte';
+	import { fade } from 'svelte/transition';
 	let { isOpen, entry, onClose, onSave } = $props();
 
 	let formData = $state({
@@ -53,6 +54,7 @@
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
+		transition:fade={{ duration: settings.getTransitionDuration() }}
 	>
 		<div
 			class="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl md:max-h-[90vh]"
@@ -138,8 +140,7 @@
 					<button
 						type="submit"
 						class="rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2"
-						style="background-color: {settings.getAccentHex()}"
-						>Save</button
+						style="background-color: {settings.getAccentHex()}">Save</button
 					>
 				</div>
 			</form>

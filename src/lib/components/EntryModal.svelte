@@ -3,6 +3,7 @@
 	import { processImage } from '$lib/utils/image';
 	import { showAlert } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { fade } from 'svelte/transition';
 
 	let { isOpen, entry, onClose, onSave, userId } = $props();
 
@@ -226,6 +227,7 @@
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
+		transition:fade={{ duration: settings.getTransitionDuration() }}
 	>
 		<div
 			class="flex max-h-[95vh] w-full max-w-4xl flex-col overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl md:max-h-[90vh]"

@@ -1,13 +1,18 @@
 <script lang="ts">
 	import { supabase } from '$lib/supabaseClient';
-	import { Eye } from 'lucide-svelte';
+	import { Eye, Loader } from 'lucide-svelte';
 
 	let { entry, onView } = $props();
 	let imageUrl = $state<string | null>(null);
+	let isImageLoading = $state(!!entry?.image);
 
 	$effect(() => {
 		if (entry?.image) {
+			isImageLoading = true;
 			getSignedUrl(entry.image);
+		} else {
+			imageUrl = null;
+			isImageLoading = false;
 		}
 	});
 
@@ -15,19 +20,36 @@
 		const { data, error } = await supabase.storage.from('dailyPicture').createSignedUrl(path, 3600);
 		if (data) {
 			imageUrl = data.signedUrl;
+		} else {
+			isImageLoading = false;
 		}
+	}
+
+	function handleImageLoad() {
+		isImageLoading = false;
 	}
 </script>
 
 <div
 	class="group relative aspect-square overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900"
 >
-	{#if imageUrl}
-		<img
-			src={imageUrl}
-			alt="Daily entry"
-			class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-		/>
+	{#if entry.image}
+		{#if isImageLoading}
+			<div class="absolute inset-0 z-10 flex items-center justify-center bg-zinc-900">
+				<Loader class="h-6 w-6 animate-spin text-zinc-600" />
+			</div>
+		{/if}
+
+		{#if imageUrl}
+			<img
+				src={imageUrl}
+				alt="Daily entry"
+				onload={handleImageLoad}
+				class={`h-full w-full object-cover transition-all duration-700 ${
+					isImageLoading ? 'scale-105 opacity-0' : 'scale-100 opacity-100'
+				} group-hover:scale-110`}
+			/>
+		{/if}
 	{:else}
 		<div class="flex h-full w-full flex-col items-center justify-center gap-2 text-zinc-700">
 			<span class="text-xs">No Image</span>

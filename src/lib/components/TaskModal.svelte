@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Trash2, Plus, ArrowUp, ArrowDown, CheckSquare, Square } from 'lucide-svelte';
+	import { fade } from 'svelte/transition';
+	import { Trash2, Plus, CheckSquare, Square, ExternalLink, GripVertical } from 'lucide-svelte';
 	import { settings } from '$lib/settingsStore.svelte';
 
 	let { isOpen, entry, onClose, onSave } = $props();
@@ -12,8 +13,11 @@
 		deadline_at: '',
 		completed_at: null as string | null,
 		color: '#000000',
-		checklist: [] as { id: string; title: string; items: { text: string; completed: boolean }[] }[]
+		checklist: [] as { id: string; title: string; items: { text: string; completed: boolean }[] }[],
+		links: [] as { url: string; label: string }[]
 	});
+
+	let draggingItem = $state<{ listIndex: number; itemIndex: number } | null>(null);
 
 	const statusOptions = [
 		{ value: 'todo', label: 'To Do' },
@@ -38,7 +42,8 @@
 							? 'items' in entry.checklist[0]
 								? entry.checklist
 								: [{ id: crypto.randomUUID(), title: 'Checklist', items: entry.checklist }]
-							: []
+							: [],
+					links: Array.isArray(entry.links) ? entry.links : []
 				};
 			} else {
 				// Reset
@@ -50,7 +55,8 @@
 					deadline_at: '',
 					completed_at: null,
 					color: '#000000',
-					checklist: []
+					checklist: [],
+					links: []
 				};
 			}
 		}
@@ -118,18 +124,39 @@
 		formData.checklist[checklistIndex] = list;
 	}
 
-	function moveChecklistItem(checklistIndex: number, itemIndex: number, direction: 'up' | 'down') {
-		const list = formData.checklist[checklistIndex];
-		const newIndex = direction === 'up' ? itemIndex - 1 : itemIndex + 1;
-		if (newIndex < 0 || newIndex >= list.items.length) return;
+	function handleDragStart(e: DragEvent, listIndex: number, itemIndex: number) {
+		draggingItem = { listIndex, itemIndex };
+		if (e.dataTransfer) {
+			e.dataTransfer.effectAllowed = 'move';
+			e.dataTransfer.dropEffect = 'move';
+		}
+	}
 
-		const item = list.items[itemIndex];
+	function handleDragOver(e: DragEvent, listIndex: number, itemIndex: number) {
+		e.preventDefault();
+		if (!draggingItem) return;
+		// Ensure we are in the same list
+		if (draggingItem.listIndex !== listIndex) return;
+		if (draggingItem.itemIndex === itemIndex) return;
+
+		const list = formData.checklist[listIndex];
+		const sourceIndex = draggingItem.itemIndex;
+		const targetIndex = itemIndex;
+
+		const item = list.items[sourceIndex];
 		const newItems = [...list.items];
-		newItems.splice(itemIndex, 1);
-		newItems.splice(newIndex, 0, item);
+		newItems.splice(sourceIndex, 1);
+		newItems.splice(targetIndex, 0, item);
 
 		list.items = newItems;
-		formData.checklist[checklistIndex] = list;
+		formData.checklist[listIndex] = list;
+
+		// Update dragging index
+		draggingItem.itemIndex = targetIndex;
+	}
+
+	function handleDragEnd() {
+		draggingItem = null;
 	}
 	function handleTypeChange() {
 		if (formData.type) {
@@ -138,6 +165,24 @@
 				formData.color = t.color;
 			}
 		}
+	}
+
+	function addLink() {
+		formData.links = [...formData.links, { url: '', label: '' }];
+	}
+
+	function removeLink(index: number) {
+		formData.links = formData.links.filter((_, i) => i !== index);
+	}
+
+	function openLink(url: string) {
+		if (!url) return;
+		// Add protocol if missing
+		let target = url;
+		if (!/^https?:\/\//i.test(target)) {
+			target = 'https://' + target;
+		}
+		window.open(target, '_blank', 'noopener,noreferrer');
 	}
 </script>
 
@@ -149,6 +194,7 @@
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
+		transition:fade={{ duration: settings.getTransitionDuration() }}
 	>
 		<div
 			class="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl md:max-h-[90vh]"
@@ -249,6 +295,21 @@
 					</div>
 				</div>
 
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+					<!-- Deadline -->
+					<div>
+						<label for="deadline_at" class="mb-1 block text-sm font-medium text-zinc-400"
+							>Deadline</label
+						>
+						<input
+							type="date"
+							id="deadline_at"
+							bind:value={formData.deadline_at}
+							class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+						/>
+					</div>
+				</div>
+
 				<!-- Body -->
 				<div>
 					<label for="body" class="mb-1 block text-sm font-medium text-zinc-400">Description</label>
@@ -316,22 +377,17 @@
 													class={`w-full rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-sm text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${item.completed ? 'text-zinc-500 line-through' : ''}`}
 												/>
 												<div class="flex items-center gap-1">
-													<button
-														type="button"
-														onclick={() => moveChecklistItem(listIndex, itemIndex, 'up')}
-														disabled={itemIndex === 0}
-														class="p-1 text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
+													<div
+														role="button"
+														tabindex="0"
+														class="cursor-grab p-1 text-zinc-600 hover:text-zinc-400 active:cursor-grabbing"
+														draggable="true"
+														ondragstart={(e) => handleDragStart(e, listIndex, itemIndex)}
+														ondragover={(e) => handleDragOver(e, listIndex, itemIndex)}
+														ondragend={handleDragEnd}
 													>
-														<ArrowUp class="h-3 w-3" />
-													</button>
-													<button
-														type="button"
-														onclick={() => moveChecklistItem(listIndex, itemIndex, 'down')}
-														disabled={itemIndex === list.items.length - 1}
-														class="p-1 text-zinc-500 hover:text-zinc-300 disabled:opacity-30"
-													>
-														<ArrowDown class="h-3 w-3" />
-													</button>
+														<GripVertical class="h-4 w-4" />
+													</div>
 													<button
 														type="button"
 														onclick={() => removeChecklistItem(listIndex, itemIndex)}
@@ -360,19 +416,63 @@
 					{/if}
 				</div>
 
-				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-					<!-- Deadline -->
-					<div>
-						<label for="deadline_at" class="mb-1 block text-sm font-medium text-zinc-400"
-							>Deadline</label
+				<!-- Links -->
+				<div class="space-y-4">
+					<div class="flex items-center justify-between">
+						<span class="block text-sm font-medium text-zinc-400">Links</span>
+						<button
+							type="button"
+							onclick={addLink}
+							class="text-xs transition-colors hover:brightness-125"
+							style="color: {settings.getAccentLightHex()}"
 						>
-						<input
-							type="date"
-							id="deadline_at"
-							bind:value={formData.deadline_at}
-							class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-						/>
+							+ Add Link
+						</button>
 					</div>
+
+					{#if formData.links && formData.links.length > 0}
+						<div class="space-y-2">
+							{#each formData.links as link, i}
+								<div class="flex items-center gap-2">
+									<div class="grid flex-1 grid-cols-1 gap-2 md:grid-cols-2">
+										<input
+											type="text"
+											bind:value={link.label}
+											placeholder="Label (optional)"
+											class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-sm text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+										/>
+										<input
+											type="text"
+											bind:value={link.url}
+											placeholder="URL"
+											class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-sm text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+										/>
+									</div>
+									<button
+										type="button"
+										onclick={() => openLink(link.url)}
+										class="p-2 text-zinc-400 hover:text-indigo-400"
+										title="Open Link"
+										disabled={!link.url}
+									>
+										<ExternalLink class="h-4 w-4" />
+									</button>
+									<button
+										type="button"
+										onclick={() => removeLink(i)}
+										class="p-2 text-zinc-400 hover:text-red-400"
+										title="Remove Link"
+									>
+										<Trash2 class="h-4 w-4" />
+									</button>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<div class="rounded-lg border border-dashed border-zinc-800 p-4 text-center">
+							<p class="text-sm text-zinc-500">No links yet</p>
+						</div>
+					{/if}
 				</div>
 
 				<div
