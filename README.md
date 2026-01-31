@@ -109,6 +109,27 @@ npx cap add ios
 npx cap open ios
 ```
 
+### Mobile Assets (Icons & Splash Screens)
+
+We use `@capacitor/assets` to automatically generate icons and splash screens for Android and iOS.
+
+1. **Place your source images** in the `assets/` folder in the project root:
+   - `assets/icon.png` (Recommended size: 1024x1024 px, no transparency for iOS)
+   - `assets/splash.png` (Recommended size: 2732x2732 px)
+   - `assets/splash-dark.png` (Optional: for dark mode splash screen)
+
+2. **Generate the assets**:
+   ```sh
+   npx capacitor-assets generate --android
+   ```
+   (Or use `npx capacitor-assets generate` if you have iOS configured as well).
+
+3. **Sync changes**:
+   Always copy the changes to the native platforms after generating:
+   ```sh
+   npx cap sync
+   ```
+
 ## Authentication
 
 You can find information about authentication with Supabase and SvelteKit in this [guide](https://supabase.com/docs/guides/auth/social-login/auth-github?queryGroups=environment&environment=client&queryGroups=framework&framework=sveltekit&queryGroups=language&language=js).
