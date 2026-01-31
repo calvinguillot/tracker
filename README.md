@@ -77,6 +77,38 @@ in the package.json file, add the following script:
 
 This will build the app and deploy it to github pages.
 
+## Capacitor
+
+This project uses [Capacitor](https://capacitorjs.com/) to run the web app as a native Android (and optionally iOS) app. The web build output is in `build` (see `capacitor.config.ts`).
+
+**Initial setup** (if starting from scratch):
+
+```sh
+npm install @capacitor/core @capacitor/cli
+npx cap init
+npm install @capacitor/android
+npx cap add android
+```
+
+**Build and run on device/emulator:**
+
+```sh
+npm run build
+npx cap sync
+npx cap open android
+```
+
+- `npx cap sync` copies the built web app into the native project and updates native dependencies.
+- `npx cap open android` opens the Android project in Android Studio so you can run or debug on a device or emulator.
+
+For iOS (macOS only):
+
+```sh
+npm install @capacitor/ios
+npx cap add ios
+npx cap open ios
+```
+
 ## Authentication
 
 You can find information about authentication with Supabase and SvelteKit in this [guide](https://supabase.com/docs/guides/auth/social-login/auth-github?queryGroups=environment&environment=client&queryGroups=framework&framework=sveltekit&queryGroups=language&language=js).

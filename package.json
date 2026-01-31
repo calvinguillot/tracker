@@ -15,6 +15,7 @@
 		"lint": "prettier --check . && eslint ."
 	},
 	"devDependencies": {
+		"@capacitor/cli": "^8.0.2",
 		"@eslint/compat": "^1.4.0",
 		"@eslint/js": "^9.39.1",
 		"@sveltejs/adapter-static": "^3.0.10",
@@ -42,13 +43,24 @@
 		"vite": "^7.2.6"
 	},
 	"dependencies": {
+		"@capacitor/android": "^8.0.2",
+		"@capacitor/core": "^8.0.2",
+		"@capacitor/ios": "^8.0.2",
+		"@dimforge/rapier3d-compat": "^0.19.3",
 		"@supabase/supabase-js": "^2.89.0",
+		"@theatre/core": "^0.7.2",
+		"@theatre/studio": "^0.7.2",
+		"@threlte/core": "^8.3.1",
+		"@threlte/extras": "^9.7.1",
+		"@threlte/rapier": "^3.2.0",
+		"@threlte/theatre": "^3.1.2",
 		"d3-array": "^3.2.4",
 		"d3-format": "^3.1.0",
 		"d3-scale": "^4.0.2",
 		"d3-shape": "^3.2.0",
 		"d3-time-format": "^4.1.0",
 		"layercake": "^10.0.2",
-		"lucide-svelte": "^0.562.0"
+		"lucide-svelte": "^0.562.0",
+		"three": "^0.182.0"
 	}
 }

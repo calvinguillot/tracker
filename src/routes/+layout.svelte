@@ -13,7 +13,8 @@
 		Folder,
 		StickyNote,
 		CheckSquare,
-		Settings
+		Settings,
+		FlaskConical
 	} from 'lucide-svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import AlertModal from '$lib/components/AlertModal.svelte';
@@ -63,8 +64,8 @@
 <div
 	class="flex min-h-screen flex-col bg-zinc-950 text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white"
 >
-	<div class="container mx-auto flex-1 p-4">
-		<header class="mb-8 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+	<header class="sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md">
+		<div class="container mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-4 p-4">
 			<div class="justify-self-start">
 				<a
 					href="{base}/"
@@ -129,6 +130,13 @@
 					>
 						<StickyNote class="h-6 w-6" />
 					</a>
+					<a
+						href="{base}/experimental"
+						class="px-6 text-zinc-400 transition-colors hover:text-[var(--accent-color)]"
+						aria-label="Experimental"
+					>
+						<FlaskConical class="h-6 w-6" />
+					</a>
 				</nav>
 
 				<div
@@ -175,12 +183,12 @@
 					</button>
 				</div>
 			{/if}
-		</header>
+		</div>
 
 		<!-- Mobile Menu Overlay -->
 		{#if session && isMobileMenuOpen}
 			<div
-				class="mb-8 flex flex-col gap-2 rounded-lg bg-zinc-900 p-4 md:hidden"
+				class="container mx-auto flex flex-col gap-2 bg-zinc-950/95 p-4 md:hidden"
 				style="--accent-color: {settings.getAccentLightHex()}"
 			>
 				<a
@@ -232,6 +240,14 @@
 					<span class="font-medium">Notes</span>
 				</a>
 				<a
+					href="{base}/experimental"
+					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-[var(--accent-color)]"
+					onclick={() => (isMobileMenuOpen = false)}
+				>
+					<FlaskConical class="h-5 w-5" />
+					<span class="font-medium">Experimental</span>
+				</a>
+				<a
 					href="{base}/settings"
 					class="flex items-center gap-3 rounded-md p-3 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-[var(--accent-color)]"
 					onclick={() => (isMobileMenuOpen = false)}
@@ -252,7 +268,9 @@
 				</button>
 			</div>
 		{/if}
+	</header>
 
+	<div class="container mx-auto flex-1 p-4 pt-8">
 		{@render children()}
 	</div>
 	<footer class="border-t border-zinc-800 py-6 text-center text-sm text-zinc-500">

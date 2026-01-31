@@ -2,8 +2,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import EntryModal from '$lib/components/EntryModal.svelte';
-	import { Plus, Loader, Download } from 'lucide-svelte';
+	import { Loader } from 'lucide-svelte';
 	import { LayerCake, Svg, Html } from 'layercake';
 	import { scaleTime } from 'd3-scale';
 	import { timeFormat } from 'd3-time-format';
@@ -13,11 +12,10 @@
 	import AxisY from '$lib/components/chart/AxisY.svelte';
 	import SharedTooltip from '$lib/components/chart/SharedTooltip.svelte';
 	import { showAlert, alertState } from '$lib/alertStore.svelte';
-	import { settings } from '$lib/settingsStore.svelte';
+	// import { settings } from '$lib/settingsStore.svelte';
 
 	let { data } = $props();
 	let session = $state<Session | null>(null);
-	let isModalOpen = $state(false);
 	let isLoading = $state(true);
 	let isStatsLoading = $state(false);
 
@@ -246,18 +244,6 @@
 		isStatsLoading = false;
 	}
 
-	async function handleSave(entry: any) {
-		const { error } = await supabase.from('dailyTracking').insert(entry);
-		if (error) {
-			console.error('Error saving entry:', error);
-			showAlert('Error saving entry: ' + error.message, 'Error');
-		} else {
-			isModalOpen = false;
-			showAlert('Entry saved successfully!', 'Success');
-			fetchData(); // Refresh data
-		}
-	}
-
 	function toggleMetric(key: string) {
 		const k = key as MetricKey;
 		activeMetrics[k].active = !activeMetrics[k].active;
@@ -426,16 +412,6 @@
 							Not enough data to display chart. Add more entries!
 						</div>
 					{/if}
-
-					<div class="flex justify-end pt-2">
-						<button
-							onclick={backupDatabase}
-							class="flex items-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-white"
-						>
-							<Download class="h-4 w-4" />
-							Backup Database
-						</button>
-					</div>
 				</div>
 
 				<!-- Events - 1/3 width on desktop -->
@@ -519,25 +495,6 @@
 				{/if}
 			</div>
 		</div>
-
-		{#if !isModalOpen && !alertState.isOpen}
-			<button
-				onclick={() => (isModalOpen = true)}
-				class="fixed right-8 bottom-8 z-50 rounded-full p-4 text-white shadow-lg transition-all hover:scale-105 hover:brightness-110"
-				style="background-color: {settings.getAccentHex()}"
-				aria-label="Create New Entry"
-			>
-				<Plus class="h-6 w-6" />
-			</button>
-		{/if}
-
-		<EntryModal
-			isOpen={isModalOpen}
-			entry={null}
-			onClose={() => (isModalOpen = false)}
-			onSave={handleSave}
-			userId={session.user.id}
-		/>
 	{:else}
 		<div class="py-16 text-center">
 			<h2 class="text-2xl font-semibold text-zinc-100">Welcome to CG Tracker</h2>
