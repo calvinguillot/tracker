@@ -28,22 +28,43 @@
 			if (_session) settings.init();
 		});
 
-		// Handle Deep Links for Native Auth
+		// Handle Deep Links for Native Auth (custom scheme com.cgtracker.app://auth/callback)
 		if (Capacitor.isNativePlatform()) {
 			App.addListener('appUrlOpen', async ({ url }) => {
-				console.log(`Debug: Received Deep Link ${url}`);
-				if (url.includes('auth/callback')) {
+				if (!url.includes('auth/callback')) return;
+				try {
 					const urlObj = new URL(url);
+					// PKCE flow: code in query string
 					const code = urlObj.searchParams.get('code');
 					if (code) {
-						// Exchange code for session via Supabase
 						const { error } = await supabase.auth.exchangeCodeForSession(code);
 						if (error) {
 							console.error('Error exchanging code from deep link:', error);
-						} else {
-							goto(`${base}/`);
+							return;
 						}
+						goto(`${base}/`);
+						return;
 					}
+					// Implicit / token flow: access_token and refresh_token in hash
+					const hash = urlObj.hash?.replace('#', '') ?? '';
+					const params = new URLSearchParams(hash);
+					const access_token = params.get('access_token');
+					const refresh_token = params.get('refresh_token');
+					if (access_token && refresh_token) {
+						const { error } = await supabase.auth.setSession({
+							access_token,
+							refresh_token
+						});
+						if (error) {
+							console.error('Error setting session from deep link:', error);
+							return;
+						}
+						// Ensure auth state notifies subscribers (see supabase/auth-js#581)
+						await supabase.auth.refreshSession();
+						goto(`${base}/`);
+					}
+				} catch (e) {
+					console.error('Error handling auth deep link:', e);
 				}
 			});
 		}

@@ -14,6 +14,7 @@
 	import SharedTooltip from '$lib/components/chart/SharedTooltip.svelte';
 	import { showAlert, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { Capacitor } from '@capacitor/core';
 
 	let { data } = $props();
 	let session = $state<Session | null>(null);
@@ -285,11 +286,12 @@
 	}
 
 	async function signInWithGithub() {
+		const redirectTo = Capacitor.isNativePlatform()
+			? 'com.cgtracker.app://auth/callback'
+			: `${window.location.origin}${base}/auth/callback`;
 		const { error } = await supabase.auth.signInWithOAuth({
 			provider: 'github',
-			options: {
-				redirectTo: `${window.location.origin}${base}/auth/callback`
-			}
+			options: { redirectTo }
 		});
 		if (error) console.error('Error signing in:', error);
 	}
