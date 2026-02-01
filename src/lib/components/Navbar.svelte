@@ -49,22 +49,19 @@
 </script>
 
 {#if session || $page.url.pathname !== base + '/'}
-	<header class="sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md">
+	<header class="navbar-safe-area sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md">
 		<div class="container mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-4 p-4">
 			<div class="justify-self-start">
 				<a
 					href="{base}/"
-					class="jiggle-link group flex text-2xl font-bold tracking-tight text-zinc-100 transition-colors"
-					style="--accent-color: {settings.getAccentLightHex()}"
+					class="home-icon-link group flex items-center transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-zinc-500"
+					aria-label="Home"
 				>
-					{#each 'CG Tracker 2026'.split('') as char, i}
-						<span
-							class="jiggle-char group-hover:text-[var(--accent-color)]"
-							style="animation-delay: {i * 0.05}s"
-						>
-							{char}
-						</span>
-					{/each}
+					<img
+						src="{base}/icon.webp"
+						alt="CG Tracker"
+						class="h-8 w-8 rounded-full object-cover opacity-90 transition-opacity group-hover:opacity-100"
+					/>
 				</a>
 			</div>
 

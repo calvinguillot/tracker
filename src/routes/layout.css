@@ -16,3 +16,8 @@
 .jiggle-link:hover .jiggle-char {
   animation: jiggle 0.5s ease-in-out;
 }
+
+/* Android / native: avoid status bar overlap when app is full screen */
+.navbar-safe-area {
+  padding-top: max(env(safe-area-inset-top, 0px), var(--status-bar-height, 0px));
+}

@@ -16,6 +16,10 @@
 	let session = $state<Session | null>(null);
 
 	onMount(() => {
+		// Android full-screen: reserve space for status bar so navbar doesn't overlap
+		if (typeof document !== 'undefined' && Capacitor.getPlatform() === 'android') {
+			document.documentElement.style.setProperty('--status-bar-height', '24px');
+		}
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
 			if (s) settings.init();
@@ -80,7 +84,7 @@
 
 <svelte:head>
 	<link rel="icon" href="{base}/calvin_surf.ico" />
-	<title>CG Tracker 2026</title>
+	<title>CG Tracker</title>
 </svelte:head>
 
 <div

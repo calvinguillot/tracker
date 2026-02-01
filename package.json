@@ -63,6 +63,7 @@
 		"d3-time-format": "^4.1.0",
 		"layercake": "^10.0.2",
 		"lucide-svelte": "^0.562.0",
-		"three": "^0.182.0"
+		"three": "^0.182.0",
+		"threlte-postprocessing": "^0.0.10"
 	}
 }
