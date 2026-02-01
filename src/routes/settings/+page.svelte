@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { settings, PALETTE, type SettingItem } from '$lib/settingsStore.svelte';
-	import { Plus, Trash2, Save, Loader } from 'lucide-svelte';
+	import { Plus, Trash2, Save, Loader, Download } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { showAlert } from '$lib/alertStore.svelte';
+	import { supabase } from '$lib/supabaseClient';
 
 	let isLoading = $state(true);
 
@@ -76,11 +77,63 @@
 		if (p) return `background-color: ${p.hex}`;
 		return `background-color: ${color.startsWith('#') ? color : '#ccc'}`;
 	}
+
+	function convertToCSV(objArray: any[]) {
+		if (!objArray || objArray.length === 0) return '';
+		const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
+		const headers = Object.keys(array[0]);
+		let str = headers.join(',') + '\r\n';
+		for (let i = 0; i < array.length; i++) {
+			let line = '';
+			for (const header of headers) {
+				if (line !== '') line += ',';
+				let item = array[i][header];
+				if (item === null || item === undefined) {
+					item = '';
+				} else if (typeof item === 'object') {
+					item = JSON.stringify(item).replace(/"/g, '""');
+					item = `"${item}"`;
+				} else {
+					item = String(item).replace(/"/g, '""');
+					if (item.search(/("|,|\n)/g) >= 0) item = `"${item}"`;
+				}
+				line += item;
+			}
+			str += line + '\r\n';
+		}
+		return str;
+	}
+
+	async function backupDatabase() {
+		const tables = ['dailyTracking', 'projects', 'artCalls', 'notes', 'tasks'];
+		for (const table of tables) {
+			const { data, error } = await supabase.from(table).select('*');
+			if (error) {
+				console.error(`Error fetching ${table}:`, error);
+				showAlert(`Error backing up ${table}: ${error.message}`, 'Error');
+				continue;
+			}
+			if (!data || data.length === 0) continue;
+			const csv = convertToCSV(data);
+			const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+			const link = document.createElement('a');
+			link.setAttribute('href', URL.createObjectURL(blob));
+			link.setAttribute(
+				'download',
+				`${table}_backup_${new Date().toISOString().split('T')[0]}.csv`
+			);
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		}
+	}
 </script>
 
 <div class="space-y-8 pb-20">
 	<div class="flex items-center justify-between">
-		<h2 class="text-2xl font-bold text-zinc-100">Settings</h2>
+		<h2 class="hidden text-2xl font-bold text-zinc-100 md:block">Settings</h2>
 		<button
 			onclick={handleSave}
 			class="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110"
@@ -291,6 +344,21 @@
 					</div>
 				{/each}
 			</div>
+		</section>
+
+		<!-- Backup Database -->
+		<section class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6">
+			<h3 class="mb-4 text-lg font-semibold text-zinc-100">Backup Database</h3>
+			<p class="mb-4 text-sm text-zinc-400">
+				Download CSV backups of daily tracking, projects, art calls, notes, and tasks.
+			</p>
+			<button
+				onclick={backupDatabase}
+				class="flex items-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-white"
+			>
+				<Download class="h-4 w-4" />
+				Backup Database
+			</button>
 		</section>
 
 		<!-- Note Colors -->

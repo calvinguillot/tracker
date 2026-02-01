@@ -150,6 +150,10 @@
 		// Convert newlines to <br> for display
 		return text.replace(/\n/g, '<br>');
 	}
+	function truncatePreview(text: string | null, max = 50) {
+		if (!text) return '';
+		return text.length > max ? text.slice(0, max) + '...' : text;
+	}
 </script>
 
 <NoteModal
@@ -161,7 +165,7 @@
 
 <section class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h2 class="text-lg font-bold text-zinc-100">Notes</h2>
+		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Notes</h2>
 		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
@@ -221,9 +225,11 @@
 							{note.title}
 						</h3>
 
-						<div class="prose prose-sm max-w-none wrap-break-word text-zinc-300 prose-invert">
-							{@html formatBody(note.body)}
-						</div>
+						{#if note.body}
+							<div class="prose prose-sm max-w-none wrap-break-word text-zinc-300 prose-invert">
+								{@html formatBody(truncatePreview(note.body))}
+							</div>
+						{/if}
 					</div>
 
 					<div

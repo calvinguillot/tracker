@@ -10,7 +10,7 @@ const config = {
 	kit: {
 		adapter: adapter(),
 		paths: {
-			base: process.env.NODE_ENV === 'production' ? '/tracker' : ''
+			base: process.env.NODE_ENV === 'production' && process.env.CAPACITOR_BUILD !== 'true' ? '/tracker' : ''
 		}
 	}
 };

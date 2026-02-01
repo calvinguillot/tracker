@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { supabase } from '$lib/supabaseClient';
+	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import EntryModal from '$lib/components/EntryModal.svelte';
-	import { Plus, Loader, Download } from 'lucide-svelte';
+	import { Loader } from 'lucide-svelte';
 	import { LayerCake, Svg, Html } from 'layercake';
 	import { scaleTime } from 'd3-scale';
 	import { timeFormat } from 'd3-time-format';
@@ -14,10 +14,10 @@
 	import SharedTooltip from '$lib/components/chart/SharedTooltip.svelte';
 	import { showAlert, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { Capacitor } from '@capacitor/core';
 
 	let { data } = $props();
 	let session = $state<Session | null>(null);
-	let isModalOpen = $state(false);
 	let isLoading = $state(true);
 	let isStatsLoading = $state(false);
 
@@ -96,12 +96,15 @@
 		return d;
 	});
 
-	// Calculate Y Domain dynamically based on active metrics
+	// Calculate Y Domain: min 0, at least 0–10 range, scale up for weight etc.
+	const Y_DOMAIN_MIN = 0;
+	const Y_DOMAIN_MAX_AT_LEAST = 10;
+
 	let yDomain = $derived.by(() => {
 		const activeKeys = (Object.keys(activeMetrics) as MetricKey[]).filter(
 			(k) => activeMetrics[k].active
 		);
-		if (activeKeys.length === 0) return [0, 10]; // Default range
+		if (activeKeys.length === 0) return [Y_DOMAIN_MIN, Y_DOMAIN_MAX_AT_LEAST];
 
 		let max = 0;
 		for (const d of filteredData) {
@@ -112,15 +115,15 @@
 				}
 			}
 		}
-		// Add some padding to top
-		return [0, max * 1.1];
+		const upper = Math.max(Y_DOMAIN_MAX_AT_LEAST, max * 1.1);
+		return [Y_DOMAIN_MIN, upper];
 	});
 
 	// Formatting - using numeric format for better readability
 	const formatTime = timeFormat('%m/%d');
 
 	// Events toggle: all time vs current month
-	let eventsCurrentMonthOnly = $state(false);
+	let eventsCurrentMonthOnly = $state(true);
 
 	// Activity Statistics
 	let activityStats = $derived.by(() => {
@@ -246,18 +249,6 @@
 		isStatsLoading = false;
 	}
 
-	async function handleSave(entry: any) {
-		const { error } = await supabase.from('dailyTracking').insert(entry);
-		if (error) {
-			console.error('Error saving entry:', error);
-			showAlert('Error saving entry: ' + error.message, 'Error');
-		} else {
-			isModalOpen = false;
-			showAlert('Entry saved successfully!', 'Success');
-			fetchData(); // Refresh data
-		}
-	}
-
 	function toggleMetric(key: string) {
 		const k = key as MetricKey;
 		activeMetrics[k].active = !activeMetrics[k].active;
@@ -297,6 +288,17 @@
 		return str;
 	}
 
+	async function signInWithGithub() {
+		const redirectTo = Capacitor.isNativePlatform()
+			? 'com.cgtracker.app://auth/callback'
+			: `${window.location.origin}${base}/auth/callback`;
+		const { error } = await supabase.auth.signInWithOAuth({
+			provider: 'github',
+			options: { redirectTo }
+		});
+		if (error) console.error('Error signing in:', error);
+	}
+
 	async function backupDatabase() {
 		const tables = ['dailyTracking', 'projects', 'artCalls', 'notes', 'tasks'];
 
@@ -332,7 +334,7 @@
 	}
 </script>
 
-<div>
+<div class="flex flex-1 flex-col">
 	{#if isLoading && session !== null}
 		<div class="flex h-64 items-center justify-center">
 			<Loader class="h-8 w-8 animate-spin text-indigo-500" />
@@ -343,58 +345,17 @@
 			<div class="grid gap-4 lg:grid-cols-3">
 				<!-- Timeline (Chart) - 2/3 width on desktop -->
 				<div class="space-y-3 lg:col-span-2">
-					<h2 class="text-lg font-bold text-zinc-100">Dashboard</h2>
-
-					<!-- Controls -->
-					<div class="space-y-3 rounded-lg bg-zinc-900 p-4 shadow-lg">
-						<div class="flex flex-wrap items-center gap-4">
-							<span class="text-sm font-medium text-zinc-300">Metrics:</span>
-							<div class="flex flex-wrap gap-2">
-								{#each Object.entries(activeMetrics) as [key, config]}
-									<button
-										class="rounded-full border px-3 py-1 text-xs font-medium transition-colors"
-										style:background-color={config.active ? config.color + '20' : 'transparent'}
-										style:border-color={config.active ? config.color : '#3f3f46'}
-										style:color={config.active ? config.color : '#a1a1aa'}
-										onclick={() => toggleMetric(key)}
-									>
-										{config.label}
-									</button>
-								{/each}
-							</div>
-						</div>
-
-						<div class="flex flex-wrap items-center gap-4">
-							<span class="text-sm font-medium text-zinc-300">Date Range:</span>
-							<input
-								type="date"
-								bind:value={startDate}
-								class="rounded border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:ring-indigo-500"
-							/>
-							<span class="text-zinc-500">to</span>
-							<input
-								type="date"
-								bind:value={endDate}
-								class="rounded border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:ring-indigo-500"
-							/>
-							{#if startDate || endDate}
-								<button
-									onclick={() => {
-										startDate = '';
-										endDate = '';
-									}}
-									class="text-xs text-indigo-400 underline hover:text-indigo-300"
-								>
-									Reset
-								</button>
-							{/if}
-						</div>
-					</div>
+					<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Dashboard</h2>
 
 					{#if filteredData.length > 1}
 						<div class="relative h-[400px] w-full rounded-lg bg-zinc-900 p-4 shadow-lg">
+							<div
+								class="absolute left-1/2 top-4 z-10 -translate-x-1/2 text-sm font-semibold text-zinc-300"
+							>
+								Progress
+							</div>
 							<LayerCake
-								padding={{ top: 20, right: 15, bottom: 32, left: 30 }}
+								padding={{ top: 36, right: 15, bottom: 32, left: 30 }}
 								x={(d: any) => d.created_at}
 								{yDomain}
 								data={filteredData}
@@ -426,15 +387,51 @@
 							Not enough data to display chart. Add more entries!
 						</div>
 					{/if}
+				</div>
 
-					<div class="flex justify-end pt-2">
-						<button
-							onclick={backupDatabase}
-							class="flex items-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-white"
-						>
-							<Download class="h-4 w-4" />
-							Backup Database
-						</button>
+				<!-- Controls -->
+				<div class="space-y-3 rounded-lg bg-zinc-900 p-4 shadow-lg">
+					<div class="flex flex-wrap items-center gap-4">
+						<span class="text-sm font-medium text-zinc-300">Metrics:</span>
+						<div class="flex flex-wrap gap-2">
+							{#each Object.entries(activeMetrics) as [key, config]}
+								<button
+									class="rounded-full border px-3 py-1 text-xs font-medium transition-colors"
+									style:background-color={config.active ? config.color + '20' : 'transparent'}
+									style:border-color={config.active ? config.color : '#3f3f46'}
+									style:color={config.active ? config.color : '#a1a1aa'}
+									onclick={() => toggleMetric(key)}
+								>
+									{config.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+
+					<div class="flex flex-wrap items-center gap-4">
+						<span class="text-sm font-medium text-zinc-300">Date Range:</span>
+						<input
+							type="date"
+							bind:value={startDate}
+							class="rounded border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:ring-indigo-500"
+						/>
+						<span class="text-zinc-500">to</span>
+						<input
+							type="date"
+							bind:value={endDate}
+							class="rounded border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:ring-indigo-500"
+						/>
+						{#if startDate || endDate}
+							<button
+								onclick={() => {
+									startDate = '';
+									endDate = '';
+								}}
+								class="text-xs text-indigo-400 underline hover:text-indigo-300"
+							>
+								Reset
+							</button>
+						{/if}
 					</div>
 				</div>
 
@@ -519,29 +516,39 @@
 				{/if}
 			</div>
 		</div>
-
-		{#if !isModalOpen && !alertState.isOpen}
-			<button
-				onclick={() => (isModalOpen = true)}
-				class="fixed right-8 bottom-8 z-50 rounded-full p-4 text-white shadow-lg transition-all hover:scale-105 hover:brightness-110"
-				style="background-color: {settings.getAccentHex()}"
-				aria-label="Create New Entry"
-			>
-				<Plus class="h-6 w-6" />
-			</button>
-		{/if}
-
-		<EntryModal
-			isOpen={isModalOpen}
-			entry={null}
-			onClose={() => (isModalOpen = false)}
-			onSave={handleSave}
-			userId={session.user.id}
-		/>
 	{:else}
-		<div class="py-16 text-center">
-			<h2 class="text-2xl font-semibold text-zinc-100">Welcome to CG Tracker</h2>
-			<p class="mt-3 text-zinc-400">Please log in to view your progress and start tracking.</p>
+		<div class="flex flex-[1] flex-col items-center justify-center text-center">
+			<div class="mb-8">
+				<div
+					class="jiggle-link group flex text-4xl font-bold tracking-tight text-zinc-100 transition-colors"
+					style="--accent-color: {settings.getAccentLightHex()}"
+				>
+					{#each 'CG Tracker 2026'.split('') as char, i}
+						<span
+							class="jiggle-char group-hover:text-[var(--accent-color)]"
+							style="animation-delay: {i * 0.05}s"
+						>
+							{char}
+						</span>
+					{/each}
+				</div>
+			</div>
+
+			<p class="mb-8 max-w-md text-lg text-zinc-400">
+				Your personal dashboard for tracking daily activities, projects, and well-being.
+			</p>
+
+			<button
+				onclick={signInWithGithub}
+				class="flex items-center gap-3 rounded-full bg-zinc-100 px-8 py-4 text-base font-semibold text-zinc-900 transition-transform hover:scale-105 active:scale-95"
+			>
+				<svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+					<path
+						d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+					/>
+				</svg>
+				Sign In with GitHub
+			</button>
 		</div>
 	{/if}
 </div>
