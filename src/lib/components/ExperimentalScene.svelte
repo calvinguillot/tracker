@@ -11,7 +11,13 @@
 		if (renderer && 'setClearColor' in renderer) renderer.setClearColor(0x000000);
 	});
 
-	const modelUrl = `${base || ''}/model_jumping.glb`;
+	const modelUrl = $derived.by(() => {
+		const prefix = `${base || ''}/models`;
+		const m = latestMood;
+		if (m == null || m >= 8) return `${prefix}/model_jumping.glb`;
+		if (m >= 4) return `${prefix}/model_laying.glb`;
+		return `${prefix}/model_sad.glb`;
+	});
 
 	// Group flocking: cohesion + separation within group, group target drifts with noise
 	const BOUNDS = 3.2;
@@ -27,10 +33,12 @@
 
 	let {
 		iconGroups = [],
+		latestMood = null,
 		onModelLoaded = () => {},
 		onModelError = () => {}
 	}: {
 		iconGroups?: { key: string; emoji: string; count: number }[];
+		latestMood?: number | null;
 		onModelLoaded?: () => void;
 		onModelError?: (err: Error) => void;
 	} = $props();
@@ -232,10 +240,7 @@
 <!-- Icons: grouped by type, moving in clusters with cohesion + separation + noise -->
 {#each iconSlots as slot, i (i)}
 	{#if slotState[i]}
-		<T.Sprite
-			position={[slotState[i].x, slotState[i].y, slotState[i].z]}
-			scale={[0.4, 0.4, 0.4]}
-		>
+		<T.Sprite position={[slotState[i].x, slotState[i].y, slotState[i].z]} scale={[0.4, 0.4, 0.4]}>
 			<T.SpriteMaterial map={getEmojiTexture(slot.emoji)} transparent={true} />
 		</T.Sprite>
 	{/if}
@@ -247,6 +252,6 @@
 		luminanceSmoothing={0.25}
 		height={480}
 		radius={0.4}
-		intensity={4}
+		intensity={2}
 	/>
 </EffectComposer>

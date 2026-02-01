@@ -145,7 +145,7 @@
 		const { data: d, error } = await supabase
 			.from('dailyTracking')
 			.select(
-				'created_at, exercise_type, ihana, calvin_day, sickness, work_type, study_type, culture_type, art_type, music_type, leisure_type, call_family, cry, loving, friends'
+				'created_at, mood, exercise_type, ihana, calvin_day, sickness, work_type, study_type, culture_type, art_type, music_type, leisure_type, call_family, cry, loving, friends'
 			)
 			.order('created_at', { ascending: true });
 
@@ -155,6 +155,13 @@
 			console.error('Error fetching data:', error);
 		}
 	}
+
+	// Latest entry by date (most recent) for mood-based model
+	let latestMood = $derived.by(() => {
+		if (!parsedData.length) return null;
+		const latest = parsedData[parsedData.length - 1];
+		return latest.mood != null ? Number(latest.mood) : null;
+	});
 </script>
 
 <svelte:head>
@@ -170,7 +177,8 @@
 			>
 				<Canvas>
 					<ExperimentalScene
-						iconGroups={iconGroups}
+						{iconGroups}
+						latestMood={latestMood}
 						onModelLoaded={() => (modelLoaded = true)}
 						onModelError={() => (modelLoaded = true)}
 					/>
