@@ -46,6 +46,19 @@
 		const { error } = await supabase.auth.signOut();
 		if (error) console.error('Error signing out:', error);
 	}
+
+	const mobilePageTitle = $derived.by(() => {
+		const path = $page.url.pathname;
+		if (path === base + '/' || path === base + '') return 'Dashboard';
+		if (path === base + '/daily') return 'Daily';
+		if (path === base + '/artcalls') return 'Art Calls';
+		if (path === base + '/projects') return 'Projects';
+		if (path === base + '/tasks') return 'Tasks';
+		if (path === base + '/notes') return 'Notes';
+		if (path === base + '/experimental') return 'Experimental';
+		if (path === base + '/settings') return 'Settings';
+		return 'CG Tracker';
+	});
 </script>
 
 {#if session || $page.url.pathname !== base + '/'}
@@ -66,8 +79,12 @@
 			</div>
 
 			{#if session}
+				<!-- Mobile: page title in center between icon and menu -->
+				<div class="col-start-2 row-start-1 flex justify-center md:hidden">
+					<span class="text-lg font-semibold text-zinc-100">{mobilePageTitle}</span>
+				</div>
 				<nav
-					class="hidden items-center justify-center gap-2 md:flex"
+					class="col-start-2 row-start-1 hidden items-center justify-center gap-2 md:flex"
 					style="--accent-color: {settings.getAccentLightHex()}"
 				>
 					<a

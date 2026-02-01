@@ -183,6 +183,10 @@
 	}
 
 	const formatDate = (value: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
+	function truncatePreview(text: string | null, max = 50) {
+		if (!text) return '';
+		return text.length > max ? text.slice(0, max) + '...' : text;
+	}
 
 	function getStatusColor(status: string | null) {
 		switch (status) {
@@ -248,7 +252,7 @@
 
 <section class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h2 class="text-lg font-bold text-zinc-100">Tasks</h2>
+		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Tasks</h2>
 		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
@@ -374,8 +378,8 @@
 
 					<!-- Body Snippet -->
 					{#if task.body}
-						<p class={`line-clamp-3 text-sm ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}>
-							{task.body}
+						<p class={`text-sm ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}>
+							{truncatePreview(task.body)}
 						</p>
 					{/if}
 

@@ -167,7 +167,7 @@
 
 <div>
 	<div class="mb-6 flex items-center justify-between">
-		<h2 class="text-lg font-bold text-zinc-100">Daily</h2>
+		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Daily</h2>
 		{#if session && !isModalOpen && !isViewModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}

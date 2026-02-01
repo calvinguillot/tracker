@@ -133,7 +133,7 @@
 
 <div class="space-y-8 pb-20">
 	<div class="flex items-center justify-between">
-		<h2 class="text-2xl font-bold text-zinc-100">Settings</h2>
+		<h2 class="hidden text-2xl font-bold text-zinc-100 md:block">Settings</h2>
 		<button
 			onclick={handleSave}
 			class="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110"

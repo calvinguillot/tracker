@@ -31,33 +31,97 @@
 		return () => ro.disconnect();
 	});
 
-	// --- Simulation (commented out): data, stats, controls, month toggle ---
-	// const backgroundImageUrl = `${base || ''}/rfuMwcFyzT8AwB18yvQA1_ZSXIOYYD.png`;
-	// let rawData = $state<any[]>([]);
-	// let eventsCurrentMonthOnly = $state(false);
-	// let showControls = $state(false);
-	// let maxSpeed = $state(0.2);
-	// let separationFactor = $state(0.2);
-	// let alignFactor = $state(0.05);
-	// let cohesionFactor = $state(0.05);
-	// let boundsSize = $state(40);
-	// let parsedData = $derived(...);
-	// let startDate = $state(''); let endDate = $state('');
-	// let filteredData = $derived.by(...);
-	// let activityStats = $derived.by(...);
-	// const demoIcons = [...]; let floatingIcons = $derived.by(...);
+	// Data for orbiting icons (grouped by activity type)
+	let rawData = $state<any[]>([]);
+
+	let parsedData = $derived(
+		rawData
+			.map((d: any) => ({
+				...d,
+				created_at: new Date(d.created_at)
+			}))
+			.sort((a: any, b: any) => a.created_at.getTime() - b.created_at.getTime())
+	);
+
+	let startDate = $state('');
+	let endDate = $state('');
+
+	let filteredData = $derived.by(() => {
+		let d = parsedData;
+		if (startDate) {
+			const [y, m, d_part] = startDate.split('-').map(Number);
+			const startLocal = new Date(y, m - 1, d_part);
+			d = d.filter((item: any) => item.created_at >= startLocal);
+		}
+		if (endDate) {
+			const [y, m, d_part] = endDate.split('-').map(Number);
+			const endLocal = new Date(y, m - 1, d_part);
+			endLocal.setHours(23, 59, 59, 999);
+			d = d.filter((item: any) => item.created_at <= endLocal);
+		}
+		return d;
+	});
+
+	let activityStats = $derived.by(() => {
+		const stats = {
+			ihana: { label: 'Ihana', count: 0, icon: '❤️' },
+			calvin_day: { label: 'Calvin Day', count: 0, icon: '✨' },
+			exercise: { label: 'Exercise', count: 0, icon: '🏃' },
+			call_family: { label: 'Family Calls', count: 0, icon: '📞' },
+			cry: { label: 'Cry', count: 0, icon: '😢' },
+			loving: { label: 'Loving', count: 0, icon: '💌' },
+			friends: { label: 'Friends', count: 0, icon: '👥' },
+			sickness: { label: 'Sick Days', count: 0, icon: '🤒' },
+			work: { label: 'Work', count: 0, icon: '💼' },
+			study: { label: 'Study', count: 0, icon: '📚' },
+			culture: { label: 'Culture', count: 0, icon: '🎭' },
+			art: { label: 'Art', count: 0, icon: '🎨' },
+			music: { label: 'Music', count: 0, icon: '🎵' },
+			leisure: { label: 'Leisure', count: 0, icon: '🎮' }
+		};
+
+		for (const d of filteredData) {
+			if (d.exercise_type && d.exercise_type.trim()) stats.exercise.count++;
+			if (d.ihana === true) stats.ihana.count++;
+			if (d.calvin_day === true) stats.calvin_day.count++;
+			if (d.sickness === true) stats.sickness.count++;
+			if (d.work_type && d.work_type.trim()) stats.work.count++;
+			if (d.study_type && d.study_type.trim()) stats.study.count++;
+			if (d.culture_type && d.culture_type.trim()) stats.culture.count++;
+			if (d.art_type && d.art_type.trim()) stats.art.count++;
+			if (d.music_type && d.music_type.trim()) stats.music.count++;
+			if (d.leisure_type && d.leisure_type.trim()) stats.leisure.count++;
+			if (d.call_family === true) stats.call_family.count++;
+			if (d.cry === true) stats.cry.count++;
+			if (d.loving === true) stats.loving.count++;
+			if (d.friends === true) stats.friends.count++;
+		}
+
+		return stats;
+	});
+
+	// Groups: one ring per activity type that has count > 0
+	let iconGroups = $derived.by(() => {
+		const groups: { key: string; emoji: string; count: number }[] = [];
+		for (const [key, stat] of Object.entries(activityStats)) {
+			if (stat.count > 0) {
+				groups.push({ key, emoji: stat.icon, count: stat.count });
+			}
+		}
+		return groups;
+	});
 
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
-			// if (s) fetchData();
+			if (s) fetchData();
 		});
 
 		const {
 			data: { subscription }
 		} = supabase.auth.onAuthStateChange((_event, _session) => {
 			session = _session;
-			// if (_session) fetchData();
+			if (_session) fetchData();
 		});
 
 		// Defer Canvas until container has real size; use explicit pixel size so WebGL viewport matches from frame 1
@@ -77,7 +141,20 @@
 		return () => subscription.unsubscribe();
 	});
 
-	// async function fetchData() { ... }
+	async function fetchData() {
+		const { data: d, error } = await supabase
+			.from('dailyTracking')
+			.select(
+				'created_at, exercise_type, ihana, calvin_day, sickness, work_type, study_type, culture_type, art_type, music_type, leisure_type, call_family, cry, loving, friends'
+			)
+			.order('created_at', { ascending: true });
+
+		if (!error && d) {
+			rawData = d;
+		} else if (error) {
+			console.error('Error fetching data:', error);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -93,6 +170,7 @@
 			>
 				<Canvas>
 					<ExperimentalScene
+						iconGroups={iconGroups}
 						onModelLoaded={() => (modelLoaded = true)}
 						onModelError={() => (modelLoaded = true)}
 					/>

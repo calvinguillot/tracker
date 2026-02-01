@@ -96,12 +96,15 @@
 		return d;
 	});
 
-	// Calculate Y Domain dynamically based on active metrics
+	// Calculate Y Domain: min 0, at least 0–10 range, scale up for weight etc.
+	const Y_DOMAIN_MIN = 0;
+	const Y_DOMAIN_MAX_AT_LEAST = 10;
+
 	let yDomain = $derived.by(() => {
 		const activeKeys = (Object.keys(activeMetrics) as MetricKey[]).filter(
 			(k) => activeMetrics[k].active
 		);
-		if (activeKeys.length === 0) return [0, 10]; // Default range
+		if (activeKeys.length === 0) return [Y_DOMAIN_MIN, Y_DOMAIN_MAX_AT_LEAST];
 
 		let max = 0;
 		for (const d of filteredData) {
@@ -112,15 +115,15 @@
 				}
 			}
 		}
-		// Add some padding to top
-		return [0, max * 1.1];
+		const upper = Math.max(Y_DOMAIN_MAX_AT_LEAST, max * 1.1);
+		return [Y_DOMAIN_MIN, upper];
 	});
 
 	// Formatting - using numeric format for better readability
 	const formatTime = timeFormat('%m/%d');
 
 	// Events toggle: all time vs current month
-	let eventsCurrentMonthOnly = $state(false);
+	let eventsCurrentMonthOnly = $state(true);
 
 	// Activity Statistics
 	let activityStats = $derived.by(() => {
@@ -342,58 +345,17 @@
 			<div class="grid gap-4 lg:grid-cols-3">
 				<!-- Timeline (Chart) - 2/3 width on desktop -->
 				<div class="space-y-3 lg:col-span-2">
-					<h2 class="text-lg font-bold text-zinc-100">Dashboard</h2>
-
-					<!-- Controls -->
-					<div class="space-y-3 rounded-lg bg-zinc-900 p-4 shadow-lg">
-						<div class="flex flex-wrap items-center gap-4">
-							<span class="text-sm font-medium text-zinc-300">Metrics:</span>
-							<div class="flex flex-wrap gap-2">
-								{#each Object.entries(activeMetrics) as [key, config]}
-									<button
-										class="rounded-full border px-3 py-1 text-xs font-medium transition-colors"
-										style:background-color={config.active ? config.color + '20' : 'transparent'}
-										style:border-color={config.active ? config.color : '#3f3f46'}
-										style:color={config.active ? config.color : '#a1a1aa'}
-										onclick={() => toggleMetric(key)}
-									>
-										{config.label}
-									</button>
-								{/each}
-							</div>
-						</div>
-
-						<div class="flex flex-wrap items-center gap-4">
-							<span class="text-sm font-medium text-zinc-300">Date Range:</span>
-							<input
-								type="date"
-								bind:value={startDate}
-								class="rounded border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:ring-indigo-500"
-							/>
-							<span class="text-zinc-500">to</span>
-							<input
-								type="date"
-								bind:value={endDate}
-								class="rounded border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:ring-indigo-500"
-							/>
-							{#if startDate || endDate}
-								<button
-									onclick={() => {
-										startDate = '';
-										endDate = '';
-									}}
-									class="text-xs text-indigo-400 underline hover:text-indigo-300"
-								>
-									Reset
-								</button>
-							{/if}
-						</div>
-					</div>
+					<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Dashboard</h2>
 
 					{#if filteredData.length > 1}
 						<div class="relative h-[400px] w-full rounded-lg bg-zinc-900 p-4 shadow-lg">
+							<div
+								class="absolute left-1/2 top-4 z-10 -translate-x-1/2 text-sm font-semibold text-zinc-300"
+							>
+								Progress
+							</div>
 							<LayerCake
-								padding={{ top: 20, right: 15, bottom: 32, left: 30 }}
+								padding={{ top: 36, right: 15, bottom: 32, left: 30 }}
 								x={(d: any) => d.created_at}
 								{yDomain}
 								data={filteredData}
@@ -425,6 +387,52 @@
 							Not enough data to display chart. Add more entries!
 						</div>
 					{/if}
+				</div>
+
+				<!-- Controls -->
+				<div class="space-y-3 rounded-lg bg-zinc-900 p-4 shadow-lg">
+					<div class="flex flex-wrap items-center gap-4">
+						<span class="text-sm font-medium text-zinc-300">Metrics:</span>
+						<div class="flex flex-wrap gap-2">
+							{#each Object.entries(activeMetrics) as [key, config]}
+								<button
+									class="rounded-full border px-3 py-1 text-xs font-medium transition-colors"
+									style:background-color={config.active ? config.color + '20' : 'transparent'}
+									style:border-color={config.active ? config.color : '#3f3f46'}
+									style:color={config.active ? config.color : '#a1a1aa'}
+									onclick={() => toggleMetric(key)}
+								>
+									{config.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+
+					<div class="flex flex-wrap items-center gap-4">
+						<span class="text-sm font-medium text-zinc-300">Date Range:</span>
+						<input
+							type="date"
+							bind:value={startDate}
+							class="rounded border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:ring-indigo-500"
+						/>
+						<span class="text-zinc-500">to</span>
+						<input
+							type="date"
+							bind:value={endDate}
+							class="rounded border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:ring-indigo-500"
+						/>
+						{#if startDate || endDate}
+							<button
+								onclick={() => {
+									startDate = '';
+									endDate = '';
+								}}
+								class="text-xs text-indigo-400 underline hover:text-indigo-300"
+							>
+								Reset
+							</button>
+						{/if}
+					</div>
 				</div>
 
 				<!-- Events - 1/3 width on desktop -->

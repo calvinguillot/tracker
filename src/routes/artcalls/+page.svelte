@@ -186,6 +186,10 @@
 	const formatType = (value: number | null) => settings.getCallTypeLabel(value);
 	const formatFunds = (value: number | null) => (value === null ? '—' : `€${value}`);
 	const formatDate = (value: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
+	function truncatePreview(text: string | null, max = 50) {
+		if (!text) return '';
+		return text.length > max ? text.slice(0, max) + '...' : text;
+	}
 
 	function getStatus(deadline: string | null) {
 		if (!deadline) {
@@ -235,7 +239,7 @@
 
 <section class="space-y-6">
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h2 class="text-lg font-bold text-zinc-100">Art Calls</h2>
+		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Art Calls</h2>
 		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
@@ -348,7 +352,7 @@
 							<p
 								class={`text-sm ${status.isOpen && !call.applied ? 'text-zinc-300' : 'text-zinc-500'}`}
 							>
-								{call.idea}
+								{truncatePreview(call.idea)}
 							</p>
 						</div>
 					{/if}
