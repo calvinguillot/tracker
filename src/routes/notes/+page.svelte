@@ -169,18 +169,18 @@
 		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
-				class="fixed right-8 bottom-8 z-50 rounded-full p-4 text-white shadow-lg transition-all hover:scale-105 hover:brightness-110"
-				style="background-color: {settings.getAccentHex()}"
+				class="fixed right-8 bottom-8 z-50 rounded-full border-0 bg-zinc-950/80 p-4 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110"
+				style="--accent-color: {settings.getAccentLightHex()}; border-color: {settings.getAccentLightHex()}"
 				aria-label="New Note"
 			>
-				<Plus class="h-6 w-6" />
+				<Plus class="h-6 w-6 text-(--accent-color)" />
 			</button>
 		{/if}
 	</div>
 
 	{#if isLoading && session !== null}
 		<div class="flex h-48 items-center justify-center">
-			<Loader class="h-6 w-6 animate-spin text-indigo-400" />
+			<Loader class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
 		</div>
 	{:else if !session}
 		<div class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6 text-zinc-400">

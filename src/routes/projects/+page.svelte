@@ -124,15 +124,6 @@
 		return `left: ${Math.max(0, left)}%; width: ${Math.min(100, width)}%;`;
 	}
 
-	function toggleSort(field: SortField) {
-		if (sortField === field) {
-			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-		} else {
-			sortField = field;
-			sortDirection = 'asc'; // Default to asc for new field
-		}
-	}
-
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
@@ -193,6 +184,27 @@
 			showAlert('Error deleting: ' + error.message, 'Error');
 		} else {
 			showAlert('Project deleted successfully!', 'Success');
+			fetchData();
+		}
+	}
+
+	async function handleDeleteFromModal(id: number) {
+		const confirmed = await showConfirm(
+			'Are you sure you want to delete this project?',
+			'Delete Project',
+			{ confirmText: 'Delete', isDestructive: true }
+		);
+
+		if (!confirmed) return;
+
+		const { error } = await supabase.from('projects').delete().eq('id', id);
+
+		if (error) {
+			console.error('Error deleting project:', error);
+			showAlert('Error deleting: ' + error.message, 'Error');
+		} else {
+			showAlert('Project deleted successfully!', 'Success');
+			isModalOpen = false;
 			fetchData();
 		}
 	}
@@ -284,26 +296,27 @@
 	entry={currentEntry}
 	onClose={() => (isModalOpen = false)}
 	onSave={handleSave}
+	onDelete={handleDeleteFromModal}
 />
 
-<section class="space-y-6">
+<section>
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Projects</h2>
 		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
-				class="fixed right-8 bottom-8 z-50 rounded-full p-4 text-white shadow-lg transition-all hover:scale-105 hover:brightness-110"
-				style="background-color: {settings.getAccentHex()}"
+				class="fixed right-8 bottom-24 z-50 rounded-full border-0 bg-zinc-950/80 p-4 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110"
+				style="--accent-color: {settings.getAccentLightHex()}; border-color: {settings.getAccentLightHex()}"
 				aria-label="New Project"
 			>
-				<Plus class="h-6 w-6" />
+				<Plus class="h-6 w-6 text-(--accent-color)" />
 			</button>
 		{/if}
 	</div>
 
 	{#if isLoading && session !== null}
 		<div class="flex h-48 items-center justify-center">
-			<Loader class="h-6 w-6 animate-spin text-indigo-400" />
+			<Loader class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
 		</div>
 	{:else if !session}
 		<div class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6 text-zinc-400">
@@ -317,22 +330,28 @@
 		<!-- Sorting Controls -->
 		<div class="mb-4 flex flex-wrap items-center justify-between gap-4 text-sm">
 			<div class="flex flex-wrap items-center gap-4">
-				<span class="text-zinc-500">Sort by:</span>
-				{#each ['name', 'date', 'progress'] as field}
-					<button
-						class={`flex items-center gap-1 rounded-md px-3 py-1.5 transition-colors ${sortField === field ? 'bg-indigo-500/20 text-indigo-300' : 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800'}`}
-						onclick={() => toggleSort(field as SortField)}
+				<div class="flex items-center gap-2">
+					<!-- <span class="text-zinc-500">Sort by:</span> -->
+					<select
+						bind:value={sortField}
+						class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
 					>
-						<span class="capitalize">{field}</span>
-						{#if sortField === field}
-							{#if sortDirection === 'asc'}
-								<ArrowUp class="h-3 w-3" />
-							{:else}
-								<ArrowDown class="h-3 w-3" />
-							{/if}
+						{#each ['name', 'date', 'progress'] as field}
+							<option value={field}>{field.charAt(0).toUpperCase() + field.slice(1)}</option>
+						{/each}
+					</select>
+					<button
+						class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+						onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
+						aria-label="Toggle sort order"
+					>
+						{#if sortDirection === 'asc'}
+							<ArrowUp class="h-4 w-4" />
+						{:else}
+							<ArrowDown class="h-4 w-4" />
 						{/if}
 					</button>
-				{/each}
+				</div>
 			</div>
 
 			<div class="flex items-center gap-4">
@@ -362,12 +381,14 @@
 
 		{#if viewMode === 'list'}
 			{#snippet projectCard(project: Project, archived: boolean)}
-				<li
-					class={`group relative flex flex-col gap-4 rounded-lg border p-4 transition-all ${
+				<button
+					type="button"
+					class={`group relative flex w-full cursor-pointer flex-col gap-4 rounded-lg border p-4 text-left transition-all ${
 						archived
 							? 'border-zinc-800/60 bg-zinc-900/30 text-zinc-500 hover:border-zinc-700/60 hover:bg-zinc-900/40'
 							: 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900/80'
 					}`}
+					onclick={() => openEdit(project)}
 				>
 					<!-- Row 1: Info & Progress -->
 					<div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -453,10 +474,8 @@
 						</div>
 					</div>
 
-					<!-- Row 2: Funds/Dates & Actions -->
-					<div
-						class="flex flex-wrap items-end justify-between gap-4 border-t border-zinc-800/50 pt-3"
-					>
+					<!-- Row 2: Funds/Dates -->
+					<div class="flex flex-wrap items-end gap-4 border-t border-zinc-800/50 pt-3">
 						<!-- Funds & Dates -->
 						<div class="flex items-center gap-6">
 							<div class="flex flex-col gap-0.5">
@@ -479,59 +498,15 @@
 								</div>
 							{/if}
 						</div>
-
-						<!-- Buttons -->
-						<div class="flex items-center gap-2">
-							<button
-								onclick={() => openEdit(project)}
-								class="rounded-md p-2 text-indigo-400 transition-colors hover:bg-zinc-800 hover:text-indigo-300"
-								aria-label="Edit"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-5 w-5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-									/>
-								</svg>
-							</button>
-							<button
-								onclick={() => handleDelete(project.id)}
-								class="rounded-md p-2 text-red-400 transition-colors hover:bg-zinc-800 hover:text-red-300"
-								aria-label="Delete"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-5 w-5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-									/>
-								</svg>
-							</button>
-						</div>
 					</div>
-				</li>
+				</button>
 			{/snippet}
 
-			<ul class="grid grid-cols-1 gap-4">
+			<div class="grid grid-cols-1 gap-4">
 				{#each activeProjects as project}
 					{@render projectCard(project, false)}
 				{/each}
-			</ul>
+			</div>
 
 			{#if archivedProjects.length > 0}
 				<div class="my-8 flex items-center gap-4">
@@ -540,11 +515,11 @@
 					<div class="h-px flex-1 bg-zinc-800"></div>
 				</div>
 
-				<ul class="grid grid-cols-1 gap-4">
+				<div class="grid grid-cols-1 gap-4">
 					{#each archivedProjects as project}
 						{@render projectCard(project, true)}
 					{/each}
-				</ul>
+				</div>
 			{/if}
 		{:else}
 			<div class="w-full overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">

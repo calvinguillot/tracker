@@ -26,7 +26,7 @@
 
 {#if alertState.isOpen}
 	<div
-		class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+		class="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
 		onclick={handleBackgroundClick}
 		onkeydown={handleKeydown}
 		role="dialog"
@@ -75,18 +75,18 @@
 					</button>
 					<button
 						onclick={handleConfirm}
-						class={`rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 ${
-							alertState.isDestructive
-								? 'bg-red-600 hover:bg-red-500 focus-visible:outline-red-600'
-								: 'bg-indigo-600 hover:bg-indigo-500 focus-visible:outline-indigo-600'
+						class={`rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 ${
+							alertState.isDestructive ? 'bg-red-600 focus-visible:outline-red-600' : ''
 						}`}
+						style={!alertState.isDestructive ? `background-color: ${settings.getAccentHex()}` : ''}
 					>
 						{alertState.confirmText}
 					</button>
 				{:else}
 					<button
 						onclick={() => closeAlert(true)}
-						class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+						class="rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2"
+						style="background-color: {settings.getAccentHex()}"
 					>
 						OK
 					</button>

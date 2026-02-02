@@ -18,7 +18,7 @@
 	let isLoading = $state(true);
 
 	// View & Sorting
-	let viewMode = $state<'list' | 'grid'>('list');
+	let viewMode = $state<'grid' | 'list'>('grid');
 	type SortField = 'created_at' | 'mood' | 'energy' | 'physical' | 'sleep' | 'meals' | 'weight';
 	let sortField = $state<SortField>('created_at');
 	let sortDirection = $state<'asc' | 'desc'>('desc');
@@ -39,15 +39,6 @@
 			}
 		})
 	);
-
-	function toggleSort(field: SortField) {
-		if (sortField === field) {
-			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-		} else {
-			sortField = field;
-			sortDirection = 'desc';
-		}
-	}
 
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -165,46 +156,52 @@
 	];
 </script>
 
-<div>
-	<div class="mb-6 flex items-center justify-between">
+<section>
+	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Daily</h2>
 		{#if session && !isModalOpen && !isViewModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
-				class="fixed right-8 bottom-8 z-50 rounded-full p-4 text-white shadow-lg transition-all hover:scale-105 hover:brightness-110"
-				style="background-color: {settings.getAccentHex()}"
+				class="fixed right-8 bottom-24 z-50 rounded-full border-0 bg-zinc-950/80 p-4 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110"
+				style="--accent-color: {settings.getAccentLightHex()}; border-color: {settings.getAccentLightHex()}"
 				aria-label="New Entry"
 			>
-				<Plus class="h-6 w-6" />
+				<Plus class="h-6 w-6 text-(--accent-color)" />
 			</button>
 		{/if}
 	</div>
 
 	{#if isLoading}
 		<div class="flex h-64 items-center justify-center">
-			<Loader class="h-8 w-8 animate-spin text-indigo-500" />
+			<Loader class="h-8 w-8 animate-spin" style="color: {settings.getAccentHex()}" />
 		</div>
 	{:else if session}
 		<!-- Controls -->
-		<div class="mb-6 flex flex-wrap items-center justify-between gap-4 text-sm">
+		<div class="mb-4 flex flex-wrap items-center justify-between gap-4 text-sm">
 			<div class="flex flex-wrap items-center gap-4">
-				<span class="text-zinc-500">Sort by:</span>
-				{#each ['date', 'mood', 'energy', 'physical', 'sleep', 'meals', 'weight'] as label}
-					{@const field = label === 'date' ? 'created_at' : label}
-					<button
-						class={`flex items-center gap-1 rounded-md px-3 py-1.5 transition-colors ${sortField === field ? 'bg-indigo-500/20 text-indigo-300' : 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800'}`}
-						onclick={() => toggleSort(field as SortField)}
+				<div class="flex items-center gap-2">
+					<!-- <span class="text-zinc-500">Sort by:</span> -->
+					<select
+						bind:value={sortField}
+						class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
 					>
-						<span class="capitalize">{label}</span>
-						{#if sortField === field}
-							{#if sortDirection === 'asc'}
-								<ArrowUp class="h-3 w-3" />
-							{:else}
-								<ArrowDown class="h-3 w-3" />
-							{/if}
+						{#each ['date', 'mood', 'energy', 'physical', 'sleep', 'meals', 'weight'] as label}
+							{@const field = label === 'date' ? 'created_at' : label}
+							<option value={field}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>
+						{/each}
+					</select>
+					<button
+						class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+						onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
+						aria-label="Toggle sort order"
+					>
+						{#if sortDirection === 'asc'}
+							<ArrowUp class="h-4 w-4" />
+						{:else}
+							<ArrowDown class="h-4 w-4" />
 						{/if}
 					</button>
-				{/each}
+				</div>
 			</div>
 
 			<!-- View Toggle -->
@@ -369,4 +366,4 @@
 		entry={currentEntry}
 		onClose={() => (isViewModalOpen = false)}
 	/>
-</div>
+</section>

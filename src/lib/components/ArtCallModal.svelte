@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { settings } from '$lib/settingsStore.svelte';
 	import { fade } from 'svelte/transition';
-	let { isOpen, entry, onClose, onSave } = $props();
+	let { isOpen, entry, onClose, onSave, onDelete } = $props<{
+		isOpen: boolean;
+		entry: any;
+		onClose: () => void;
+		onSave: (data: any) => void;
+		onDelete?: (id: number) => void;
+	}>();
 
 	let formData = $state({
 		name: '',
@@ -218,19 +224,31 @@
 				</div>
 
 				<div
-					class="sticky bottom-0 mt-6 flex justify-end gap-3 border-t border-zinc-800 bg-zinc-900 pt-4"
+					class="sticky bottom-0 mt-6 flex justify-between gap-3 border-t border-zinc-800 bg-zinc-900 pt-4"
 				>
-					<button
-						type="button"
-						onclick={onClose}
-						class="rounded-md bg-zinc-800 px-3.5 py-2.5 text-sm font-semibold text-zinc-200 shadow-sm ring-1 ring-zinc-700 ring-inset hover:bg-zinc-700"
-						>Cancel</button
-					>
-					<button
-						type="submit"
-						class="rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-						style="background-color: {settings.getAccentHex()}">Save</button
-					>
+					<div>
+						{#if entry && onDelete}
+							<button
+								type="button"
+								onclick={() => onDelete(entry.id)}
+								class="rounded-md bg-red-500/10 px-3.5 py-2.5 text-sm font-semibold text-red-400 shadow-sm ring-1 ring-red-500/20 transition-colors ring-inset hover:bg-red-500/20"
+								>Delete</button
+							>
+						{/if}
+					</div>
+					<div class="flex gap-3">
+						<button
+							type="button"
+							onclick={onClose}
+							class="rounded-md bg-zinc-800 px-3.5 py-2.5 text-sm font-semibold text-zinc-200 shadow-sm ring-1 ring-zinc-700 ring-inset hover:bg-zinc-700"
+							>Cancel</button
+						>
+						<button
+							type="submit"
+							class="rounded-md px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2"
+							style="background-color: {settings.getAccentHex()}">Save</button
+						>
+					</div>
 				</div>
 			</form>
 		</div>

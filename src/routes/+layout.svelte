@@ -9,11 +9,23 @@
 	import { App } from '@capacitor/app';
 	import { Capacitor } from '@capacitor/core';
 	import { goto } from '$app/navigation';
+	import { fade } from 'svelte/transition';
+	import { Loader } from 'lucide-svelte';
 	import AlertModal from '$lib/components/AlertModal.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
 
 	let { children } = $props();
 	let session = $state<Session | null>(null);
+	let authChecked = $state(false);
+
+	// Determine if we're on a secondary page (no bottom navbar shown on mobile)
+	const isSecondaryPage = $derived.by(() => {
+		const path = $page.url.pathname;
+		return path.includes('/notes') || path.includes('/experimental') || path.includes('/settings');
+	});
+
+	// Show bottom navbar padding only when logged in and not on secondary pages
+	const showBottomNavbar = $derived(session && !isSecondaryPage);
 
 	onMount(() => {
 		// Android full-screen: reserve space for status bar so navbar doesn't overlap
@@ -23,6 +35,7 @@
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
 			if (s) settings.init();
+			authChecked = true;
 		});
 
 		const {
@@ -87,21 +100,40 @@
 	<title>CG Tracker</title>
 </svelte:head>
 
-<div
-	class="flex min-h-screen flex-col bg-zinc-950 text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white"
->
-	<Navbar {session} />
-
+{#if !authChecked}
+	<!-- Full-screen loader while checking authentication -->
 	<div
-		class="container mx-auto flex-1 p-4 pt-8"
-		class:flex={!session && $page.url.pathname === base + '/'}
-		class:flex-col={!session && $page.url.pathname === base + '/'}
+		class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950"
+		out:fade={{ duration: 300 }}
 	>
-		{@render children()}
+		<div class="flex flex-col items-center gap-4">
+			<Loader class="h-10 w-10 animate-spin" style="color: {settings.getAccentHex()}" />
+			<span class="text-sm text-zinc-400">Loading...</span>
+		</div>
 	</div>
-	<footer class="border-t border-zinc-800 py-6 text-center text-sm text-zinc-500">
-		© {new Date().getFullYear()} Calvin Guillot
-	</footer>
-</div>
+{:else}
+	<div
+		class="flex min-h-screen flex-col bg-zinc-950 text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white"
+	>
+		<Navbar {session} />
+
+		<div
+			class="container mx-auto flex-1 p-4 pt-4"
+			class:flex={!session && $page.url.pathname === base + '/'}
+			class:flex-col={!session && $page.url.pathname === base + '/'}
+			class:pb-20={showBottomNavbar}
+			class:md:pb-4={showBottomNavbar}
+		>
+			{@render children()}
+		</div>
+		<footer
+			class="border-t border-zinc-800 py-6 text-center text-sm text-zinc-500"
+			class:hidden={showBottomNavbar}
+			class:md:block={showBottomNavbar}
+		>
+			© {new Date().getFullYear()} Calvin Guillot
+		</footer>
+	</div>
+{/if}
 
 <AlertModal />
