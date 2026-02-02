@@ -69,7 +69,8 @@
 
 {#if session || $page.url.pathname !== base + '/'}
 	<header
-		class="navbar-safe-area sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md"
+		class="navbar-safe-area sticky top-0 z-50 w-full backdrop-blur-md"
+		style="background-color: {settings.getAccentHex()}/50"
 	>
 		<div class="container mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-4 p-4">
 			<div class="justify-self-start">
@@ -94,7 +95,7 @@
 				</div>
 				<nav
 					class="col-start-2 row-start-1 hidden items-center justify-center gap-2 md:flex"
-					style="--accent-color: {settings.getAccentLightHex()}"
+					style="--accent-color: {settings.getAccentLightHex()}; background-color: {settings.getAccentHex()}/50"
 				>
 					<a
 						href="{base}/"
@@ -258,8 +259,8 @@
 	{@const isProjects = $page.url.pathname === base + '/projects'}
 	{@const isTasks = $page.url.pathname === base + '/tasks'}
 	<nav
-		class="fixed right-0 bottom-0 left-0 z-40 border-t border-zinc-800 bg-zinc-950/80 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md md:hidden"
-		style="--accent-color: {settings.getAccentLightHex()}"
+		class="fixed right-0 bottom-0 left-0 z-40 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md md:hidden"
+		style="--accent-color: {settings.getAccentLightHex()}; background-color: {settings.getAccentHex()}/50"
 	>
 		<div class="flex items-center justify-around py-2">
 			<a
