@@ -1,0 +1,1 @@
+import{l as a,m as c,n as i,r as u,u as f,t as s,q as o}from"./BVFz32Il.js";function b(n){let e=0,r=i(0),t;return()=>{a()&&(c(r),u(()=>(e===0&&(t=f(()=>n(()=>s(r)))),e+=1,()=>{o(()=>{e-=1,e===0&&(t?.(),t=void 0,s(r))})})))}}export{b as c};
