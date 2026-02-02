@@ -145,7 +145,7 @@
 
 	{#if isLoading}
 		<div class="flex h-48 items-center justify-center">
-			<Loader class="h-6 w-6 animate-spin text-indigo-400" />
+			<Loader class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
 		</div>
 	{:else}
 		<!-- Global Accent -->

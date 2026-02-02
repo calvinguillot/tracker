@@ -2,7 +2,16 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Loader, Plus, ArrowUp, ArrowDown, ListChecks, Link as LinkIcon } from 'lucide-svelte';
+	import {
+		Loader,
+		Plus,
+		ArrowUp,
+		ArrowDown,
+		ListChecks,
+		Link as LinkIcon,
+		List,
+		Calendar
+	} from 'lucide-svelte';
 	import TaskModal from '$lib/components/TaskModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
@@ -26,6 +35,8 @@
 	let tasks = $state<Task[]>([]);
 	let isModalOpen = $state(false);
 	let currentEntry = $state<Task | null>(null);
+	let viewMode = $state<'list' | 'week'>('list');
+	const maxCharDescriptionLength = 40;
 
 	// Sorting state
 	type SortField = 'title' | 'deadline' | 'created' | 'status' | 'completed';
@@ -78,13 +89,33 @@
 
 	let completedCount = $derived(tasks.filter((t) => t.status === 'done').length);
 
-	function toggleSort(field: SortField) {
-		if (sortField === field) {
-			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-		} else {
-			sortField = field;
-			sortDirection = 'asc'; // Default to asc for new field
+	let currentWeek = $derived.by(() => {
+		const now = new Date();
+		const day = now.getDay(); // 0=Sun, 1=Mon
+		const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+		const monday = new Date(now);
+		monday.setDate(diff);
+		monday.setHours(0, 0, 0, 0);
+
+		const week = [];
+		for (let i = 0; i < 7; i++) {
+			const d = new Date(monday);
+			d.setDate(monday.getDate() + i);
+			week.push(d);
 		}
+		return week;
+	});
+
+	function getTasksForDay(date: Date) {
+		return activeTasks.filter((t) => {
+			if (!t.deadline_at) return false;
+			const d = new Date(t.deadline_at);
+			return (
+				d.getFullYear() === date.getFullYear() &&
+				d.getMonth() === date.getMonth() &&
+				d.getDate() === date.getDate()
+			);
+		});
 	}
 
 	onMount(() => {
@@ -152,6 +183,27 @@
 		}
 	}
 
+	async function handleDeleteFromModal(id: number) {
+		const confirmed = await showConfirm(
+			'Are you sure you want to delete this task?',
+			'Delete Task',
+			{ confirmText: 'Delete', isDestructive: true }
+		);
+
+		if (!confirmed) return;
+
+		const { error } = await supabase.from('tasks').delete().eq('id', id);
+
+		if (error) {
+			console.error('Error deleting task:', error);
+			showAlert('Error deleting: ' + error.message, 'Error');
+		} else {
+			showAlert('Task deleted successfully!', 'Success');
+			isModalOpen = false;
+			fetchData();
+		}
+	}
+
 	async function handleSave(entry: any) {
 		const { id, ...payload } = entry;
 
@@ -183,7 +235,7 @@
 	}
 
 	const formatDate = (value: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
-	function truncatePreview(text: string | null, max = 50) {
+	function truncatePreview(text: string | null, max = maxCharDescriptionLength) {
 		if (!text) return '';
 		return text.length > max ? text.slice(0, max) + '...' : text;
 	}
@@ -248,26 +300,27 @@
 	entry={currentEntry}
 	onClose={() => (isModalOpen = false)}
 	onSave={handleSave}
+	onDelete={handleDeleteFromModal}
 />
 
-<section class="space-y-6">
+<section>
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Tasks</h2>
 		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
-				class="fixed right-8 bottom-8 z-50 rounded-full p-4 text-white shadow-lg transition-all hover:scale-105 hover:brightness-110"
-				style="background-color: {settings.getAccentHex()}"
+				class="fixed right-8 bottom-24 z-50 rounded-full border-0 bg-zinc-950/80 p-4 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110"
+				style="--accent-color: {settings.getAccentLightHex()}; border-color: {settings.getAccentLightHex()}"
 				aria-label="New Task"
 			>
-				<Plus class="h-6 w-6" />
+				<Plus class="h-6 w-6 text-(--accent-color)" />
 			</button>
 		{/if}
 	</div>
 
 	{#if isLoading && session !== null}
 		<div class="flex h-48 items-center justify-center">
-			<Loader class="h-6 w-6 animate-spin text-indigo-400" />
+			<Loader class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
 		</div>
 	{:else if !session}
 		<div class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6 text-zinc-400">
@@ -279,9 +332,31 @@
 		</div>
 	{:else}
 		<!-- Sorting Controls -->
-		<div class="mb-4 flex flex-wrap items-center gap-4 text-sm">
+		<div class="mb-4 flex flex-wrap justify-between gap-4 text-sm">
+			<div class="flex flex-wrap items-center gap-2">
+				<!-- <span class="text-zinc-500">Sort by:</span> -->
+				<select
+					bind:value={sortField}
+					class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
+				>
+					{#each ['title', 'deadline', 'created', 'status', 'completed'] as field}
+						<option value={field}>{field.charAt(0).toUpperCase() + field.slice(1)}</option>
+					{/each}
+				</select>
+				<button
+					class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+					onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
+					aria-label="Toggle sort order"
+				>
+					{#if sortDirection === 'asc'}
+						<ArrowUp class="h-4 w-4" />
+					{:else}
+						<ArrowDown class="h-4 w-4" />
+					{/if}
+				</button>
+			</div>
 			<div class="flex items-center gap-2">
-				<span class="text-zinc-500">Filter:</span>
+				<!-- <span class="text-zinc-500">Filter:</span> -->
 				<select
 					bind:value={filterType}
 					class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
@@ -292,187 +367,202 @@
 					{/each}
 				</select>
 			</div>
-			<div class="h-4 w-px bg-zinc-800"></div>
 
-			<span class="text-zinc-500">Sort by:</span>
-			{#each ['title', 'deadline', 'created', 'status', 'completed'] as field}
-				<button
-					class={`flex items-center gap-1 rounded-md px-3 py-1.5 transition-colors ${sortField === field ? 'bg-indigo-500/20 text-indigo-300' : 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800'}`}
-					onclick={() => toggleSort(field as SortField)}
-				>
-					<span class="capitalize">{field}</span>
-					{#if sortField === field}
-						{#if sortDirection === 'asc'}
-							<ArrowUp class="h-3 w-3" />
-						{:else}
-							<ArrowDown class="h-3 w-3" />
-						{/if}
-					{/if}
-				</button>
-			{/each}
-			<span class="ml-auto text-xs text-zinc-500">
-				Completed {completedCount} / {tasks.length}
-			</span>
+			<div class="ml-auto flex items-center gap-4">
+				<span class="text-xs text-zinc-500">
+					Completed {completedCount} / {tasks.length}
+				</span>
+
+				<!-- View Toggle -->
+				<div class="flex items-center rounded-lg bg-zinc-800/50 p-1">
+					<button
+						class={`rounded-md p-1.5 transition-all ${viewMode === 'list' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+						onclick={() => (viewMode = 'list')}
+						aria-label="List View"
+					>
+						<List class="h-4 w-4" />
+					</button>
+					<button
+						class={`rounded-md p-1.5 transition-all ${viewMode === 'week' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+						onclick={() => (viewMode = 'week')}
+						aria-label="Week View"
+					>
+						<Calendar class="h-4 w-4" />
+					</button>
+				</div>
+			</div>
 		</div>
 
-		{#snippet taskCard(task: Task, archived: boolean)}
-			{@const statusStyle = getStatusColor(task.status)}
-			<li
-				class={`group relative flex flex-col justify-between rounded-lg border p-4 transition-all ${
-					archived
-						? 'border-zinc-800/60 bg-zinc-900/30 text-zinc-500 hover:border-zinc-700/60 hover:bg-zinc-900/40'
-						: 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900/80'
-				}`}
-			>
-				<div class="flex flex-col gap-3">
-					<!-- Header: Title, Status -->
-					<div class="flex items-start justify-between gap-3">
-						<div class="min-w-0 flex-1">
-							<div class="flex flex-wrap items-center gap-2">
-								{#if task.color}
-									<div
-										class={`h-3 w-3 rounded-full ${archived ? 'opacity-50' : ''} ${task.color.startsWith('bg-') ? task.color : ''}`}
-										style={!task.color.startsWith('bg-') ? `background-color: ${task.color}` : ''}
-										title="Task Color"
-									></div>
-								{/if}
-								<h3
-									class={`truncate text-base font-bold ${archived ? 'text-zinc-500' : 'text-zinc-100'}`}
-									title={task.title}
-								>
-									{task.title}
-								</h3>
-							</div>
-							<div class="mt-1 flex items-center gap-2 text-xs">
-								<div
-									class={`shrink-0 rounded-full px-2 py-0.5 font-medium ${statusStyle.bg} ${statusStyle.text}`}
-								>
-									{getStatusLabel(task.status)}
-								</div>
-								{#if task.type}
-									<span class="text-zinc-500">•</span>
-									<span class={archived ? 'text-zinc-600' : 'text-zinc-400'}
-										>{settings.getTaskType(task.type)?.label ?? task.type}</span
+		{#if viewMode === 'list'}
+			{#snippet taskCard(task: Task, archived: boolean)}
+				{@const statusStyle = getStatusColor(task.status)}
+				<button
+					type="button"
+					class={`group relative flex w-full cursor-pointer flex-col justify-between rounded-lg border p-4 text-left transition-all ${
+						archived
+							? 'border-zinc-800/60 bg-zinc-900/30 text-zinc-500 hover:border-zinc-700/60 hover:bg-zinc-900/40'
+							: 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900/80'
+					}`}
+					onclick={() => openEdit(task)}
+				>
+					<div class="flex flex-col gap-3">
+						<!-- Header: Title, Status -->
+						<div class="flex items-start justify-between gap-3">
+							<div class="min-w-0 flex-1">
+								<div class="flex flex-wrap items-center gap-2">
+									{#if task.color}
+										<div
+											class={`h-3 w-3 rounded-full ${archived ? 'opacity-50' : ''} ${task.color.startsWith('bg-') ? task.color : ''}`}
+											style={!task.color.startsWith('bg-') ? `background-color: ${task.color}` : ''}
+											title="Task Color"
+										></div>
+									{/if}
+									<h3
+										class={`truncate text-base font-bold ${archived ? 'text-zinc-500' : 'text-zinc-100'}`}
+										title={task.title}
 									>
-								{/if}
-								{#if task.checklist}
-									{@const counts = getChecklistCounts(task.checklist)}
-									{#if counts.total > 0}
+										{task.title}
+									</h3>
+								</div>
+								<div class="mt-1 flex items-center gap-2 text-xs">
+									<div
+										class={`shrink-0 rounded-full px-2 py-0.5 font-medium ${statusStyle.bg} ${statusStyle.text}`}
+									>
+										{getStatusLabel(task.status)}
+									</div>
+									{#if task.type}
 										<span class="text-zinc-500">•</span>
-										<ListChecks class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`} />
+										<span class={archived ? 'text-zinc-600' : 'text-zinc-400'}
+											>{settings.getTaskType(task.type)?.label ?? task.type}</span
+										>
+									{/if}
+									{#if task.checklist}
+										{@const counts = getChecklistCounts(task.checklist)}
+										{#if counts.total > 0}
+											<span class="text-zinc-500">•</span>
+											<ListChecks
+												class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
+											/>
+											<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
+												{counts.completed}/{counts.total}
+											</span>
+										{/if}
+									{/if}
+									{#if task.links && task.links.length > 0}
+										<span class="text-zinc-500">•</span>
+										<LinkIcon class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`} />
 										<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
-											{counts.completed}/{counts.total}
+											{task.links.length}
 										</span>
 									{/if}
-								{/if}
-								{#if task.links && task.links.length > 0}
-									<span class="text-zinc-500">•</span>
-									<LinkIcon class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`} />
-									<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
-										{task.links.length}
-									</span>
-								{/if}
+								</div>
 							</div>
 						</div>
-					</div>
 
-					<!-- Body Snippet -->
-					{#if task.body}
-						<p class={`text-sm ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}>
-							{truncatePreview(task.body)}
-						</p>
-					{/if}
+						<!-- Body Snippet -->
+						{#if task.body}
+							<p class={`text-sm ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}>
+								{truncatePreview(task.body)}
+							</p>
+						{/if}
 
-					<!-- Details Row -->
-					<div
-						class="mt-2 flex items-center justify-between gap-4 border-t border-zinc-800/50 pt-3"
-					>
-						<div class="flex gap-4">
-							<div class="flex flex-col gap-0.5">
-								<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
-									>Deadline</span
-								>
-								<span class={`text-xs ${archived ? 'text-zinc-500' : 'text-zinc-300'}`}>
-									{formatDate(task.deadline_at)}
-								</span>
-							</div>
-							{#if task.completed_at}
+						<!-- Details Row -->
+						<div class="mt-2 flex items-center gap-4 border-t border-zinc-800/50 pt-3">
+							<div class="flex gap-4">
 								<div class="flex flex-col gap-0.5">
 									<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
-										>Completed</span
+										>Deadline</span
 									>
-									<span class={`text-xs ${archived ? 'text-zinc-500' : 'text-emerald-400'}`}>
-										{formatDate(task.completed_at)}
+									<span class={`text-xs ${archived ? 'text-zinc-500' : 'text-zinc-300'}`}>
+										{formatDate(task.deadline_at)}
 									</span>
 								</div>
-							{/if}
-						</div>
-
-						<div class="flex items-center gap-2">
-							<button
-								onclick={() => openEdit(task)}
-								class="rounded-md p-2 text-indigo-400 transition-colors hover:bg-zinc-800 hover:text-indigo-300"
-								aria-label="Edit"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-5 w-5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-									/>
-								</svg>
-							</button>
-							<button
-								onclick={() => handleDelete(task.id)}
-								class="rounded-md p-2 text-red-400 transition-colors hover:bg-zinc-800 hover:text-red-300"
-								aria-label="Delete"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-5 w-5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-									/>
-								</svg>
-							</button>
+								{#if task.completed_at}
+									<div class="flex flex-col gap-0.5">
+										<span class="text-[10px] font-bold tracking-wider text-zinc-500 uppercase"
+											>Completed</span
+										>
+										<span class={`text-xs ${archived ? 'text-zinc-500' : 'text-emerald-400'}`}>
+											{formatDate(task.completed_at)}
+										</span>
+									</div>
+								{/if}
+							</div>
 						</div>
 					</div>
-				</div>
-			</li>
-		{/snippet}
+				</button>
+			{/snippet}
 
-		<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-			{#each activeTasks as task}
-				{@render taskCard(task, false)}
-			{/each}
-		</ul>
-
-		{#if archivedTasks.length > 0}
-			<div class="my-8 flex items-center gap-4">
-				<div class="h-px flex-1 bg-zinc-800"></div>
-				<span class="text-sm font-medium tracking-wider text-zinc-500 uppercase">Archived</span>
-				<div class="h-px flex-1 bg-zinc-800"></div>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+				{#each activeTasks as task}
+					{@render taskCard(task, false)}
+				{/each}
 			</div>
 
-			<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-				{#each archivedTasks as task}
-					{@render taskCard(task, true)}
+			{#if archivedTasks.length > 0}
+				<div class="my-8 flex items-center gap-4">
+					<div class="h-px flex-1 bg-zinc-800"></div>
+					<span class="text-sm font-medium tracking-wider text-zinc-500 uppercase">Archived</span>
+					<div class="h-px flex-1 bg-zinc-800"></div>
+				</div>
+
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+					{#each archivedTasks as task}
+						{@render taskCard(task, true)}
+					{/each}
+				</div>
+			{/if}
+		{:else}
+			<div class="flex flex-col gap-4 md:grid md:grid-cols-7">
+				{#each currentWeek as day}
+					{@const dayTasks = getTasksForDay(day)}
+					{@const isToday = new Date().toDateString() === day.toDateString()}
+					<div
+						class={`flex min-h-[200px] flex-col gap-2 rounded-lg border p-2 ${isToday ? 'border-zinc-700 bg-zinc-900/40' : 'border-transparent'}`}
+					>
+						<!-- Header -->
+						<div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+							<span class={`text-sm font-medium ${isToday ? 'text-indigo-400' : 'text-zinc-400'}`}>
+								{day.toLocaleDateString('en-US', { weekday: 'short' })}
+							</span>
+							<span class={`text-xs ${isToday ? 'text-indigo-400' : 'text-zinc-600'}`}>
+								{day.getDate()}
+							</span>
+						</div>
+
+						<!-- Tasks -->
+						<div class="flex flex-1 flex-col gap-2">
+							{#each dayTasks as task}
+								<button
+									class="group flex flex-col gap-1 rounded border border-zinc-800 bg-zinc-900/60 p-2 text-left transition-colors hover:bg-zinc-800/80"
+									onclick={() => openEdit(task)}
+								>
+									<div class="flex items-center gap-2">
+										{#if task.color}
+											<div
+												class={`h-2 w-2 shrink-0 rounded-full ${task.color.startsWith('bg-') ? task.color : ''}`}
+												style={!task.color.startsWith('bg-')
+													? `background-color: ${task.color}`
+													: ''}
+											></div>
+										{/if}
+										<span class="truncate text-xs font-medium text-zinc-300" title={task.title}>
+											{task.title}
+										</span>
+									</div>
+									<div class="flex items-center gap-2">
+										{#if task.type}
+											<span class="text-[10px] text-zinc-500 uppercase">
+												{settings.getTaskType(task.type)?.label ?? task.type}
+											</span>
+										{/if}
+									</div>
+								</button>
+							{/each}
+						</div>
+					</div>
 				{/each}
-			</ul>
+			</div>
 		{/if}
 	{/if}
 </section>

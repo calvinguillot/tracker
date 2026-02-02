@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Loader } from 'lucide-svelte';
+	import { Loader, ArrowUp, ArrowDown, CheckSquare, Palette, SquareCheckBig } from 'lucide-svelte';
 	import { LayerCake, Svg, Html } from 'layercake';
 	import { scaleTime } from 'd3-scale';
 	import { timeFormat } from 'd3-time-format';
@@ -16,6 +16,28 @@
 	import { settings } from '$lib/settingsStore.svelte';
 	import { Capacitor } from '@capacitor/core';
 
+	// Types for today's deadlines
+	type TodayTask = {
+		id: number;
+		title: string;
+		status: string;
+		type: string | null;
+		color: string | null;
+		deadline_at: string;
+	};
+
+	type TodayArtCall = {
+		id: number;
+		name: string;
+		location: string;
+		type: number | null;
+		funds: number | null;
+		deadline: string;
+		applied: boolean;
+	};
+
+	type DeadlineItem = { kind: 'task'; data: TodayTask } | { kind: 'artcall'; data: TodayArtCall };
+
 	let { data } = $props();
 	let session = $state<Session | null>(null);
 	let isLoading = $state(true);
@@ -25,6 +47,19 @@
 	let appliedArtCallsCount = $state(0);
 	let completedProjectsCount = $state(0);
 	let completedTasksCount = $state(0);
+
+	// Today's deadlines
+	let todayTasks = $state<TodayTask[]>([]);
+	let todayArtCalls = $state<TodayArtCall[]>([]);
+
+	// Combined and sorted deadlines for today
+	let todayDeadlines = $derived.by(() => {
+		const items: DeadlineItem[] = [
+			...todayTasks.map((t) => ({ kind: 'task' as const, data: t })),
+			...todayArtCalls.map((a) => ({ kind: 'artcall' as const, data: a }))
+		];
+		return items;
+	});
 
 	let parsedData = $derived(
 		rawData
@@ -125,6 +160,12 @@
 	// Events toggle: all time vs current month
 	let eventsCurrentMonthOnly = $state(true);
 
+	// Metrics dropdown state
+	let metricsDropdownOpen = $state(false);
+	let activeMetricsCount = $derived(
+		(Object.values(activeMetrics) as { active: boolean }[]).filter((m) => m.active).length
+	);
+
 	// Activity Statistics
 	let activityStats = $derived.by(() => {
 		const stats = {
@@ -218,14 +259,36 @@
 	async function fetchProjectStats() {
 		isStatsLoading = true;
 
+		// Get today's date in YYYY-MM-DD format for filtering
+		const today = new Date();
+		const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
 		const [
 			{ count: appliedCount, error: appliedError },
 			{ count: completedCount, error: completedError },
-			{ count: completedTasksCountRes, error: completedTasksError }
+			{ count: completedTasksCountRes, error: completedTasksError },
+			{ data: tasksToday, error: tasksTodayError },
+			{ data: artCallsToday, error: artCallsTodayError }
 		] = await Promise.all([
 			supabase.from('artCalls').select('id', { count: 'exact', head: true }).eq('applied', true),
 			supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 3),
-			supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'done')
+			supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'done'),
+			// Fetch tasks with deadline today (not done)
+			supabase
+				.from('tasks')
+				.select('id, title, status, type, color, deadline_at')
+				.gte('deadline_at', todayStr + 'T00:00:00')
+				.lte('deadline_at', todayStr + 'T23:59:59')
+				.neq('status', 'done')
+				.order('deadline_at', { ascending: true }),
+			// Fetch art calls with deadline today (not applied)
+			supabase
+				.from('artCalls')
+				.select('id, name, location, type, funds, deadline, applied')
+				.gte('deadline', todayStr + 'T00:00:00')
+				.lte('deadline', todayStr + 'T23:59:59')
+				.eq('applied', false)
+				.order('deadline', { ascending: true })
 		]);
 
 		if (appliedError) {
@@ -246,12 +309,46 @@
 			completedTasksCount = completedTasksCountRes ?? 0;
 		}
 
+		if (tasksTodayError) {
+			console.error('Error fetching today tasks:', tasksTodayError);
+		} else {
+			todayTasks = tasksToday ?? [];
+		}
+
+		if (artCallsTodayError) {
+			console.error('Error fetching today art calls:', artCallsTodayError);
+		} else {
+			todayArtCalls = artCallsToday ?? [];
+		}
+
 		isStatsLoading = false;
 	}
 
 	function toggleMetric(key: string) {
 		const k = key as MetricKey;
 		activeMetrics[k].active = !activeMetrics[k].active;
+	}
+
+	// Helper functions for deadline cards
+	function getStatusColor(status: string | null) {
+		switch (status) {
+			case 'todo':
+				return { bg: 'bg-zinc-500/10', text: 'text-zinc-400' };
+			case 'in_progress':
+				return { bg: 'bg-indigo-500/10', text: 'text-indigo-400' };
+			case 'done':
+				return { bg: 'bg-emerald-500/10', text: 'text-emerald-400' };
+			default:
+				return { bg: 'bg-zinc-500/10', text: 'text-zinc-400' };
+		}
+	}
+
+	function getStatusLabel(status: string | null) {
+		if (!status) return 'Unknown';
+		return status
+			.split('_')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
 	}
 
 	function convertToCSV(objArray: any[]) {
@@ -335,22 +432,121 @@
 </script>
 
 <div class="flex flex-1 flex-col">
-	{#if isLoading && session !== null}
+	{#if isLoading}
 		<div class="flex h-64 items-center justify-center">
-			<Loader class="h-8 w-8 animate-spin text-indigo-500" />
+			<Loader class="h-8 w-8 animate-spin" style="color: {settings.getAccentHex()}" />
 		</div>
 	{:else if session}
 		<div class="space-y-4">
-			<!-- Main Content: Chart + Events side by side on desktop -->
-			<div class="grid gap-4 lg:grid-cols-3">
-				<!-- Timeline (Chart) - 2/3 width on desktop -->
-				<div class="space-y-3 lg:col-span-2">
+			<!-- Main Content: Chart + Events + Today's Tasks side by side on desktop -->
+			<!-- Desktop: 1/2 Chart, 1/4 Events, 1/4 Today's Tasks + Done -->
+			<!-- Mobile: Chart first, then Today's Tasks, then Events -->
+			<div class="grid gap-4 lg:grid-cols-4">
+				<!-- Timeline (Chart) - 1/2 width on desktop, first on mobile -->
+				<div class="order-1 space-y-3 lg:order-1 lg:col-span-2">
 					<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Dashboard</h2>
+
+					<!-- Controls toolbar (no card background, above chart) -->
+					<div class="flex flex-wrap items-center justify-between gap-4 text-sm">
+						<!-- Metrics Multi-Select Dropdown -->
+						<div class="flex flex-wrap items-center gap-2">
+							<span class="text-zinc-500">Metrics:</span>
+							<div class="relative">
+								<button
+									onclick={() => (metricsDropdownOpen = !metricsDropdownOpen)}
+									class="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm transition-colors hover:bg-zinc-700"
+								>
+									<!-- Color chips for active metrics -->
+									<div class="flex items-center gap-1">
+										{#each Object.entries(activeMetrics) as [key, config]}
+											{#if config.active}
+												<span
+													class="h-2.5 w-2.5 rounded-full"
+													style:background-color={config.color}
+													title={config.label}
+												></span>
+											{/if}
+										{/each}
+									</div>
+									<span class="text-zinc-400">{activeMetricsCount} selected</span>
+									<ArrowDown class="h-3.5 w-3.5 text-zinc-400" />
+								</button>
+
+								{#if metricsDropdownOpen}
+									<!-- Backdrop to close dropdown -->
+									<button
+										class="fixed inset-0 z-10"
+										onclick={() => (metricsDropdownOpen = false)}
+										aria-label="Close dropdown"
+									></button>
+									<!-- Dropdown panel -->
+									<div
+										class="absolute left-0 z-20 mt-1 w-48 rounded-md border border-zinc-700 bg-zinc-800 py-1 shadow-lg"
+									>
+										{#each Object.entries(activeMetrics) as [key, config]}
+											<button
+												class="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm transition-colors hover:bg-zinc-700"
+												onclick={() => toggleMetric(key)}
+											>
+												<span class="h-3 w-3 rounded-full" style:background-color={config.color}
+												></span>
+												<span class={config.active ? 'text-zinc-100' : 'text-zinc-400'}>
+													{config.label}
+												</span>
+												{#if config.active}
+													<svg
+														class="ml-auto h-4 w-4 text-indigo-400"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke="currentColor"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															stroke-width="2"
+															d="M5 13l4 4L19 7"
+														/>
+													</svg>
+												{/if}
+											</button>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Date Range -->
+						<!-- <div class="flex flex-wrap items-center gap-2">
+							<span class="text-zinc-500">Range:</span>
+							<input
+								type="date"
+								bind:value={startDate}
+								class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
+							/>
+							<span class="text-zinc-500">to</span>
+							<input
+								type="date"
+								bind:value={endDate}
+								class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
+							/>
+							{#if startDate || endDate}
+								<button
+									onclick={() => {
+										startDate = '';
+										endDate = '';
+									}}
+									class="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+								>
+									Reset
+								</button>
+							{/if}
+						</div> -->
+					</div>
 
 					{#if filteredData.length > 1}
 						<div class="relative h-[400px] w-full rounded-lg bg-zinc-900 p-4 shadow-lg">
 							<div
-								class="absolute left-1/2 top-4 z-10 -translate-x-1/2 text-sm font-semibold text-zinc-300"
+								class="absolute top-4 left-1/2 z-10 -translate-x-1/2 text-sm font-semibold text-zinc-300"
 							>
 								Progress
 							</div>
@@ -389,62 +585,19 @@
 					{/if}
 				</div>
 
-				<!-- Controls -->
-				<div class="space-y-3 rounded-lg bg-zinc-900 p-4 shadow-lg">
-					<div class="flex flex-wrap items-center gap-4">
-						<span class="text-sm font-medium text-zinc-300">Metrics:</span>
-						<div class="flex flex-wrap gap-2">
-							{#each Object.entries(activeMetrics) as [key, config]}
-								<button
-									class="rounded-full border px-3 py-1 text-xs font-medium transition-colors"
-									style:background-color={config.active ? config.color + '20' : 'transparent'}
-									style:border-color={config.active ? config.color : '#3f3f46'}
-									style:color={config.active ? config.color : '#a1a1aa'}
-									onclick={() => toggleMetric(key)}
-								>
-									{config.label}
-								</button>
-							{/each}
-						</div>
-					</div>
-
-					<div class="flex flex-wrap items-center gap-4">
-						<span class="text-sm font-medium text-zinc-300">Date Range:</span>
-						<input
-							type="date"
-							bind:value={startDate}
-							class="rounded border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:ring-indigo-500"
-						/>
-						<span class="text-zinc-500">to</span>
-						<input
-							type="date"
-							bind:value={endDate}
-							class="rounded border-zinc-600 bg-zinc-700 px-2 py-1 text-sm text-white focus:border-indigo-500 focus:ring-indigo-500"
-						/>
-						{#if startDate || endDate}
-							<button
-								onclick={() => {
-									startDate = '';
-									endDate = '';
-								}}
-								class="text-xs text-indigo-400 underline hover:text-indigo-300"
-							>
-								Reset
-							</button>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Events - 1/3 width on desktop -->
+				<!-- Events - 1/4 width on desktop, third on mobile -->
 				{#if filteredData.length > 0}
-					<div class="space-y-3">
+					<div class="order-3 space-y-3 lg:order-2 lg:col-span-1">
 						<div class="flex items-center justify-between">
 							<h2 class="text-lg font-semibold text-zinc-100">Events</h2>
 							<button
 								onclick={() => (eventsCurrentMonthOnly = !eventsCurrentMonthOnly)}
 								class="flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium transition-colors {eventsCurrentMonthOnly
-									? 'bg-indigo-500/20 text-indigo-400'
+									? ''
 									: 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}"
+								style={eventsCurrentMonthOnly
+									? `background-color: ${settings.getAccentHex()}33; color: ${settings.getAccentLightHex()}`
+									: ''}
 							>
 								{eventsCurrentMonthOnly ? 'This Month' : 'All Time'}
 							</button>
@@ -452,12 +605,12 @@
 						<div class="grid grid-cols-2 gap-2">
 							{#each Object.entries(activityStats) as [key, stat]}
 								<div
-									class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
+									class="rounded-lg bg-zinc-900 px-2 py-2 shadow-lg transition-all hover:bg-zinc-800"
 								>
-									<div class="flex items-center gap-2.5">
+									<div class="flex items-center gap-1.5">
 										<span class="text-lg">{stat.icon}</span>
-										<div class="flex-1">
-											<div class="text-xs font-medium text-zinc-300">
+										<div class="min-w-0 flex-1">
+											<div class="truncate text-xs font-medium text-zinc-300">
 												{stat.label}
 											</div>
 										</div>
@@ -468,10 +621,89 @@
 								</div>
 							{/each}
 						</div>
+					</div>
+				{/if}
+
+				<!-- Today's Tasks + Done - 1/4 width on desktop, second on mobile -->
+				{#if filteredData.length > 0}
+					<div class="order-2 space-y-3 lg:order-3 lg:col-span-1">
+						<!-- Today's Tasks Section -->
+						<h2 class="text-lg font-semibold text-zinc-100">Today's Tasks</h2>
+						{#if isStatsLoading}
+							<div class="flex h-16 items-center justify-center">
+								<Loader class="h-5 w-5 animate-spin" style="color: {settings.getAccentHex()}" />
+							</div>
+						{:else if todayDeadlines.length === 0}
+							<div class="rounded-lg bg-zinc-900/60 px-3 py-4 text-center text-sm text-zinc-500">
+								No deadlines for today
+							</div>
+						{:else}
+							<div class="grid grid-cols-1 gap-2">
+								{#each todayDeadlines as item}
+									{#if item.kind === 'task'}
+										{@const task = item.data}
+										{@const statusStyle = getStatusColor(task.status)}
+										<div
+											class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
+										>
+											<div class="flex items-center gap-2.5">
+												<SquareCheckBig class="h-4 w-4 text-indigo-400" />
+												<div class="min-w-0 flex-1">
+													<div
+														class="truncate text-sm font-medium text-zinc-100"
+														title={task.title}
+													>
+														{task.title}
+													</div>
+													<div class="flex items-center gap-2 text-xs">
+														<span
+															class={`rounded-full px-1.5 py-0.5 ${statusStyle.bg} ${statusStyle.text}`}
+														>
+															{getStatusLabel(task.status)}
+														</span>
+														{#if task.type}
+															<span class="text-zinc-500"
+																>{settings.getTaskType(task.type)?.label ?? task.type}</span
+															>
+														{/if}
+													</div>
+												</div>
+											</div>
+										</div>
+									{:else}
+										{@const artCall = item.data}
+										<div
+											class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
+										>
+											<div class="flex items-center gap-2.5">
+												<Palette class="h-4 w-4 text-emerald-400" />
+												<div class="min-w-0 flex-1">
+													<div
+														class="truncate text-sm font-medium text-zinc-100"
+														title={artCall.name}
+													>
+														{artCall.name}
+													</div>
+													<div class="flex items-center gap-2 text-xs text-zinc-400">
+														<span class="truncate">{artCall.location}</span>
+														{#if artCall.funds}
+															<span class="text-zinc-500">•</span>
+															<span class="text-emerald-400">€{artCall.funds}</span>
+														{/if}
+													</div>
+												</div>
+											</div>
+										</div>
+									{/if}
+								{/each}
+							</div>
+						{/if}
+
+						<!-- Done Section -->
 						<div class="pt-2">
-							<h2 class="text-lg font-semibold text-zinc-100">Projects</h2>
+							<h2 class="text-lg font-semibold text-zinc-100">Done</h2>
 						</div>
-						<div class="grid grid-cols-2 gap-2">
+						<div class="grid grid-cols-2 gap-2 lg:grid-cols-1">
 							<div
 								class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
 							>
@@ -517,15 +749,15 @@
 			</div>
 		</div>
 	{:else}
-		<div class="flex flex-[1] flex-col items-center justify-center text-center">
+		<div class="flex flex-1 flex-col items-center justify-center text-center">
 			<div class="mb-8">
 				<div
 					class="jiggle-link group flex text-4xl font-bold tracking-tight text-zinc-100 transition-colors"
 					style="--accent-color: {settings.getAccentLightHex()}"
 				>
-					{#each 'CG Tracker 2026'.split('') as char, i}
+					{#each 'CG Tracker'.split('') as char, i}
 						<span
-							class="jiggle-char group-hover:text-[var(--accent-color)]"
+							class="jiggle-char group-hover:text-(--accent-color)"
 							style="animation-delay: {i * 0.05}s"
 						>
 							{char}
