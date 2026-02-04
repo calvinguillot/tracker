@@ -65,11 +65,24 @@
 		const path = $page.url.pathname;
 		return path.includes('/notes') || path.includes('/experimental') || path.includes('/settings');
 	});
+
+	// Page active state variables (used by both mobile and desktop navs)
+	const isDashboard = $derived(
+		$page.url.pathname === base + '/' || $page.url.pathname === base + ''
+	);
+	const isDaily = $derived($page.url.pathname === base + '/daily');
+	const isArtCalls = $derived($page.url.pathname === base + '/artcalls');
+	const isProjects = $derived($page.url.pathname === base + '/projects');
+	const isTasks = $derived($page.url.pathname === base + '/tasks');
+	const isNotes = $derived($page.url.pathname === base + '/notes');
+	const isExperimental = $derived($page.url.pathname === base + '/experimental');
+	const isSettings = $derived($page.url.pathname === base + '/settings');
 </script>
 
 {#if session || $page.url.pathname !== base + '/'}
 	<header
-		class="navbar-safe-area sticky top-0 z-50 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md"
+		class="navbar-safe-area sticky top-0 z-50 w-full backdrop-blur-md"
+		style="background-color: {settings.getAccentHex()}/50"
 	>
 		<div class="container mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-4 p-4">
 			<div class="justify-self-start">
@@ -94,56 +107,77 @@
 				</div>
 				<nav
 					class="col-start-2 row-start-1 hidden items-center justify-center gap-2 md:flex"
-					style="--accent-color: {settings.getAccentLightHex()}"
+					style="--accent-color: {settings.getAccentLightHex()}; background-color: {settings.getAccentHex()}/50"
 				>
 					<a
 						href="{base}/"
-						class="px-6 text-zinc-400 transition-colors hover:text-(--accent-color)"
+						class="flex items-center gap-2 px-4 transition-colors hover:text-(--accent-color)"
+						class:text-zinc-400={!isDashboard}
+						class:text-[var(--accent-color)]={isDashboard}
 						aria-label="Dashboard"
 					>
-						<LayoutDashboard class="h-6 w-6" />
+						<LayoutDashboard class="h-5 w-5" />
+						<span class="text-sm font-medium">Dashboard</span>
 					</a>
 					<a
 						href="{base}/daily"
-						class="px-6 text-zinc-400 transition-colors hover:text-(--accent-color)"
+						class="flex items-center gap-2 px-4 transition-colors hover:text-(--accent-color)"
+						class:text-zinc-400={!isDaily}
+						class:text-[var(--accent-color)]={isDaily}
 						aria-label="Daily"
 					>
-						<Table class="h-6 w-6" />
+						<Table class="h-5 w-5" />
+						<span class="text-sm font-medium">Daily</span>
 					</a>
 					<a
 						href="{base}/artcalls"
-						class="px-6 text-zinc-400 transition-colors hover:text-(--accent-color)"
+						class="flex items-center gap-2 px-4 transition-colors hover:text-(--accent-color)"
+						class:text-zinc-400={!isArtCalls}
+						class:text-[var(--accent-color)]={isArtCalls}
 						aria-label="Art Calls"
 					>
-						<Palette class="h-6 w-6" />
+						<Palette class="h-5 w-5" />
+						<span class="text-sm font-medium">Art Calls</span>
 					</a>
 					<a
 						href="{base}/projects"
-						class="px-6 text-zinc-400 transition-colors hover:text-(--accent-color)"
+						class="flex items-center gap-2 px-4 transition-colors hover:text-(--accent-color)"
+						class:text-zinc-400={!isProjects}
+						class:text-[var(--accent-color)]={isProjects}
 						aria-label="Projects"
 					>
-						<Folder class="h-6 w-6" />
+						<Folder class="h-5 w-5" />
+						<span class="text-sm font-medium">Projects</span>
 					</a>
 					<a
 						href="{base}/tasks"
-						class="px-6 text-zinc-400 transition-colors hover:text-(--accent-color)"
+						class="flex items-center gap-2 px-4 transition-colors hover:text-(--accent-color)"
+						class:text-zinc-400={!isTasks}
+						class:text-[var(--accent-color)]={isTasks}
 						aria-label="Tasks"
 					>
-						<CheckSquare class="h-6 w-6" />
+						<CheckSquare class="h-5 w-5" />
+						<span class="text-sm font-medium">Tasks</span>
 					</a>
 					<a
 						href="{base}/notes"
-						class="px-6 text-zinc-400 transition-colors hover:text-(--accent-color)"
+						class="flex items-center gap-2 px-4 transition-colors hover:text-(--accent-color)"
+						class:text-zinc-400={!isNotes}
+						class:text-[var(--accent-color)]={isNotes}
 						aria-label="Notes"
 					>
-						<StickyNote class="h-6 w-6" />
+						<StickyNote class="h-5 w-5" />
+						<span class="text-sm font-medium">Notes</span>
 					</a>
 					<a
 						href="{base}/experimental"
-						class="px-6 text-zinc-400 transition-colors hover:text-(--accent-color)"
+						class="flex items-center gap-2 px-4 transition-colors hover:text-(--accent-color)"
+						class:text-zinc-400={!isExperimental}
+						class:text-[var(--accent-color)]={isExperimental}
 						aria-label="Experimental"
 					>
-						<FlaskConical class="h-6 w-6" />
+						<FlaskConical class="h-5 w-5" />
+						<span class="text-sm font-medium">Experimental</span>
 					</a>
 				</nav>
 
@@ -153,7 +187,9 @@
 				>
 					<a
 						href="{base}/settings"
-						class="rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-800/50 hover:text-(--accent-color)"
+						class="rounded-full p-2 transition-colors hover:bg-zinc-800/50 hover:text-(--accent-color)"
+						class:text-zinc-400={!isSettings}
+						class:text-[var(--accent-color)]={isSettings}
 						aria-label="Settings"
 					>
 						<Settings class="h-6 w-6" />
@@ -252,14 +288,9 @@
 
 <!-- Mobile Bottom Navbar -->
 {#if session && !isSecondaryPage}
-	{@const isDashboard = $page.url.pathname === base + '/' || $page.url.pathname === base + ''}
-	{@const isDaily = $page.url.pathname === base + '/daily'}
-	{@const isArtCalls = $page.url.pathname === base + '/artcalls'}
-	{@const isProjects = $page.url.pathname === base + '/projects'}
-	{@const isTasks = $page.url.pathname === base + '/tasks'}
 	<nav
-		class="fixed right-0 bottom-0 left-0 z-40 border-t border-zinc-800 bg-zinc-950/80 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md md:hidden"
-		style="--accent-color: {settings.getAccentLightHex()}"
+		class="fixed right-0 bottom-0 left-0 z-40 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md md:hidden"
+		style="--accent-color: {settings.getAccentLightHex()}; background-color: {settings.getAccentHex()}/50"
 	>
 		<div class="flex items-center justify-around py-2">
 			<a

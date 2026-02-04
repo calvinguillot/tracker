@@ -10,8 +10,15 @@
 		ListChecks,
 		Link as LinkIcon,
 		List,
-		Calendar
+		Calendar,
+		Circle,
+		CircleDot,
+		CheckCircle2,
+		ChevronLeft,
+		ChevronRight
 	} from 'lucide-svelte';
+	import { flip } from 'svelte/animate';
+	import { fade, fly } from 'svelte/transition';
 	import TaskModal from '$lib/components/TaskModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
@@ -44,6 +51,11 @@
 	let sortDirection = $state<'asc' | 'desc'>('asc');
 
 	let filterType = $state('all');
+
+	let weekOffset = $state(0); // 0 = current week, -1 = last week, 1 = next week
+
+	let draggingTaskId = $state<number | null>(null);
+	let dragOverDate = $state<Date | null>(null);
 
 	let filteredTasks = $derived(
 		filterType === 'all' ? tasks : tasks.filter((t) => t.type === filterType)
@@ -94,7 +106,7 @@
 		const day = now.getDay(); // 0=Sun, 1=Mon
 		const diff = now.getDate() - day + (day === 0 ? -6 : 1);
 		const monday = new Date(now);
-		monday.setDate(diff);
+		monday.setDate(diff + weekOffset * 7); // Apply offset
 		monday.setHours(0, 0, 0, 0);
 
 		const week = [];
@@ -106,6 +118,35 @@
 		return week;
 	});
 
+	let weekNumber = $derived.by(() => {
+		const firstDay = currentWeek[0];
+		const startOfYear = new Date(firstDay.getFullYear(), 0, 1);
+		const days = Math.floor((firstDay.getTime() - startOfYear.getTime()) / 86400000);
+		return Math.ceil((days + startOfYear.getDay() + 1) / 7);
+	});
+
+	let weekDateRange = $derived.by(() => {
+		const start = currentWeek[0];
+		const end = currentWeek[6];
+		const formatOpts: Intl.DateTimeFormatOptions = {
+			month: 'short' as const,
+			day: 'numeric' as const
+		};
+		return `${start.toLocaleDateString('en-US', formatOpts)} - ${end.toLocaleDateString('en-US', formatOpts)}`;
+	});
+
+	function previousWeek() {
+		weekOffset--;
+	}
+
+	function nextWeek() {
+		weekOffset++;
+	}
+
+	function goToCurrentWeek() {
+		weekOffset = 0;
+	}
+
 	function getTasksForDay(date: Date) {
 		return activeTasks.filter((t) => {
 			if (!t.deadline_at) return false;
@@ -116,6 +157,86 @@
 				d.getDate() === date.getDate()
 			);
 		});
+	}
+
+	function handleDragStart(event: DragEvent, task: Task) {
+		draggingTaskId = task.id;
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'move';
+			event.dataTransfer.setData('text/plain', task.id.toString());
+		}
+	}
+
+	function handleDragOver(event: DragEvent) {
+		event.preventDefault();
+		if (event.dataTransfer) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+	}
+
+	function handleDragEnter(event: DragEvent, date: Date) {
+		event.preventDefault();
+		dragOverDate = date;
+	}
+
+	function handleDragLeave(event: DragEvent) {
+		// Only clear if we're leaving the day column, not entering a child element
+		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		const x = event.clientX;
+		const y = event.clientY;
+		if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+			dragOverDate = null;
+		}
+	}
+
+	async function handleDrop(event: DragEvent, targetDate: Date) {
+		event.preventDefault();
+		dragOverDate = null;
+
+		if (draggingTaskId === null) return;
+
+		const task = tasks.find((t) => t.id === draggingTaskId);
+		if (!task) {
+			draggingTaskId = null;
+			return;
+		}
+
+		// Calculate new deadline_at
+		let newDeadline: Date;
+		if (task.deadline_at) {
+			// Preserve the original time, just update the date
+			const originalDeadline = new Date(task.deadline_at);
+			newDeadline = new Date(targetDate);
+			newDeadline.setHours(
+				originalDeadline.getHours(),
+				originalDeadline.getMinutes(),
+				originalDeadline.getSeconds(),
+				originalDeadline.getMilliseconds()
+			);
+		} else {
+			// No existing deadline, use the target date (which is 00:00:00)
+			newDeadline = new Date(targetDate);
+		}
+
+		const newDeadlineIso = newDeadline.toISOString();
+
+		// Optimistic update
+		tasks = tasks.map((t) => (t.id === draggingTaskId ? { ...t, deadline_at: newDeadlineIso } : t));
+
+		// Persist to database
+		const { error } = await supabase
+			.from('tasks')
+			.update({ deadline_at: newDeadlineIso })
+			.eq('id', draggingTaskId);
+
+		if (error) {
+			console.error('Error updating task deadline:', error);
+			showAlert('Error updating deadline: ' + error.message, 'Error');
+			// Revert on error
+			fetchData();
+		}
+
+		draggingTaskId = null;
 	}
 
 	onMount(() => {
@@ -234,6 +355,29 @@
 		}
 	}
 
+	async function quickStatusUpdate(task: Task, newStatus: string) {
+		const payload: any = { status: newStatus };
+		if (newStatus === 'done') {
+			payload.completed_at = new Date().toISOString();
+		} else {
+			payload.completed_at = null;
+		}
+
+		// Optimistic update - modify local state immediately
+		tasks = tasks.map((t) =>
+			t.id === task.id ? { ...t, status: newStatus, completed_at: payload.completed_at } : t
+		);
+
+		const { error } = await supabase.from('tasks').update(payload).eq('id', task.id);
+
+		if (error) {
+			console.error('Error updating task status:', error);
+			showAlert('Error updating status: ' + error.message, 'Error');
+			// Revert on error
+			fetchData();
+		}
+	}
+
 	const formatDate = (value: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
 	function truncatePreview(text: string | null, max = maxCharDescriptionLength) {
 		if (!text) return '';
@@ -303,14 +447,36 @@
 	onDelete={handleDeleteFromModal}
 />
 
+{#snippet weekNavigation()}
+	<div class="flex items-center gap-2">
+		<button
+			onclick={previousWeek}
+			aria-label="Previous week"
+			class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+		>
+			<ChevronLeft class="h-4 w-4" />
+		</button>
+		<div class="text-center">
+			<span class="text-sm font-medium text-zinc-300">Week {weekNumber}</span>
+			<span class="ml-1 text-xs text-zinc-500">{weekDateRange}</span>
+		</div>
+		<button
+			onclick={nextWeek}
+			aria-label="Next week"
+			class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+		>
+			<ChevronRight class="h-4 w-4" />
+		</button>
+	</div>
+{/snippet}
+
 <section>
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Tasks</h2>
 		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
-				class="fixed right-8 bottom-24 z-50 rounded-full border-0 bg-zinc-950/80 p-4 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110"
-				style="--accent-color: {settings.getAccentLightHex()}; border-color: {settings.getAccentLightHex()}"
+				class="fixed right-8 bottom-24 z-50 rounded-full p-4 shadow-lg/30 drop-shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110 md:right-16 md:bottom-16"
+				style="--accent-color: {settings.getAccentLightHex()}; background-color: {settings.getAccentHex()}/50"
 				aria-label="New Task"
 			>
 				<Plus class="h-6 w-6 text-(--accent-color)" />
@@ -332,43 +498,54 @@
 		</div>
 	{:else}
 		<!-- Sorting Controls -->
-		<div class="mb-4 flex flex-wrap justify-between gap-4 text-sm">
-			<div class="flex flex-wrap items-center gap-2">
-				<!-- <span class="text-zinc-500">Sort by:</span> -->
-				<select
-					bind:value={sortField}
-					class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
-				>
-					{#each ['title', 'deadline', 'created', 'status', 'completed'] as field}
-						<option value={field}>{field.charAt(0).toUpperCase() + field.slice(1)}</option>
-					{/each}
-				</select>
-				<button
-					class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
-					onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
-					aria-label="Toggle sort order"
-				>
-					{#if sortDirection === 'asc'}
-						<ArrowUp class="h-4 w-4" />
-					{:else}
-						<ArrowDown class="h-4 w-4" />
-					{/if}
-				</button>
-			</div>
-			<div class="flex items-center gap-2">
-				<!-- <span class="text-zinc-500">Filter:</span> -->
-				<select
-					bind:value={filterType}
-					class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
-				>
-					<option value="all">All Tasks</option>
-					{#each settings.settings.task_types as type}
-						<option value={type.id}>{type.label}</option>
-					{/each}
-				</select>
+		<div class="mb-4 flex flex-col gap-3 text-sm md:flex-row md:items-center">
+			<!-- Left: Sorting and Filter -->
+			<div class="flex flex-wrap items-center justify-between gap-2 md:gap-2">
+				<div class="flex flex-wrap items-center gap-2">
+					<!-- <span class="text-zinc-500">Sort by:</span> -->
+					<select
+						bind:value={sortField}
+						class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
+					>
+						{#each ['title', 'deadline', 'created', 'status', 'completed'] as field}
+							<option value={field}>{field.charAt(0).toUpperCase() + field.slice(1)}</option>
+						{/each}
+					</select>
+					<button
+						class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+						onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
+						aria-label="Toggle sort order"
+					>
+						{#if sortDirection === 'asc'}
+							<ArrowUp class="h-4 w-4" />
+						{:else}
+							<ArrowDown class="h-4 w-4" />
+						{/if}
+					</button>
+				</div>
+				<div class="flex items-center gap-2">
+					<!-- <span class="text-zinc-500">Filter:</span> -->
+					<select
+						bind:value={filterType}
+						class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
+					>
+						<option value="all">All Tasks</option>
+						{#each settings.settings.task_types as type}
+							<option value={type.id}>{type.label}</option>
+						{/each}
+					</select>
+				</div>
 			</div>
 
-			<div class="ml-auto flex items-center gap-4">
+			<!-- Center: Week Navigation (desktop only, when in week view) -->
+			{#if viewMode === 'week'}
+				<div class="hidden flex-1 md:flex md:justify-center">
+					{@render weekNavigation()}
+				</div>
+			{/if}
+
+			<!-- Right: Completed count and View toggle (desktop) -->
+			<div class="hidden md:ml-auto md:flex md:items-center md:gap-4">
 				<span class="text-xs text-zinc-500">
 					Completed {completedCount} / {tasks.length}
 				</span>
@@ -393,20 +570,55 @@
 			</div>
 		</div>
 
+		<!-- Row 2: Completed count and View toggle (mobile only) -->
+		<div class="mb-4 flex items-center justify-between md:hidden">
+			<span class="text-xs text-zinc-500">Completed {completedCount} / {tasks.length}</span>
+			<!-- View Toggle -->
+			<div class="flex items-center rounded-lg bg-zinc-800/50 p-1">
+				<button
+					class={`rounded-md p-1.5 transition-all ${viewMode === 'list' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+					onclick={() => (viewMode = 'list')}
+					aria-label="List View"
+				>
+					<List class="h-4 w-4" />
+				</button>
+				<button
+					class={`rounded-md p-1.5 transition-all ${viewMode === 'week' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+					onclick={() => (viewMode = 'week')}
+					aria-label="Week View"
+				>
+					<Calendar class="h-4 w-4" />
+				</button>
+			</div>
+		</div>
+
+		<!-- Row 3: Week controls (mobile only, only in week view) -->
+		{#if viewMode === 'week'}
+			<div class="mb-4 flex items-center justify-center md:hidden">
+				{@render weekNavigation()}
+			</div>
+		{/if}
+
 		{#if viewMode === 'list'}
 			{#snippet taskCard(task: Task, archived: boolean)}
-				{@const statusStyle = getStatusColor(task.status)}
-				<button
-					type="button"
+				<div
 					class={`group relative flex w-full cursor-pointer flex-col justify-between rounded-lg border p-4 text-left transition-all ${
 						archived
 							? 'border-zinc-800/60 bg-zinc-900/30 text-zinc-500 hover:border-zinc-700/60 hover:bg-zinc-900/40'
 							: 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900/80'
 					}`}
 					onclick={() => openEdit(task)}
+					role="button"
+					tabindex={0}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							openEdit(task);
+						}
+					}}
 				>
 					<div class="flex flex-col gap-3">
-						<!-- Header: Title, Status -->
+						<!-- Header: Title, Status Toggle -->
 						<div class="flex items-start justify-between gap-3">
 							<div class="min-w-0 flex-1">
 								<div class="flex flex-wrap items-center gap-2">
@@ -425,13 +637,7 @@
 									</h3>
 								</div>
 								<div class="mt-1 flex items-center gap-2 text-xs">
-									<div
-										class={`shrink-0 rounded-full px-2 py-0.5 font-medium ${statusStyle.bg} ${statusStyle.text}`}
-									>
-										{getStatusLabel(task.status)}
-									</div>
 									{#if task.type}
-										<span class="text-zinc-500">•</span>
 										<span class={archived ? 'text-zinc-600' : 'text-zinc-400'}
 											>{settings.getTaskType(task.type)?.label ?? task.type}</span
 										>
@@ -439,7 +645,9 @@
 									{#if task.checklist}
 										{@const counts = getChecklistCounts(task.checklist)}
 										{#if counts.total > 0}
-											<span class="text-zinc-500">•</span>
+											{#if task.type}
+												<span class="text-zinc-500">•</span>
+											{/if}
 											<ListChecks
 												class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
 											/>
@@ -449,13 +657,81 @@
 										{/if}
 									{/if}
 									{#if task.links && task.links.length > 0}
-										<span class="text-zinc-500">•</span>
+										{#if task.type || (task.checklist && getChecklistCounts(task.checklist).total > 0)}
+											<span class="text-zinc-500">•</span>
+										{/if}
 										<LinkIcon class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`} />
 										<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
 											{task.links.length}
 										</span>
 									{/if}
 								</div>
+							</div>
+							<!-- Triple Toggle: Todo | In Progress | Done -->
+							<div class="flex items-center gap-0.5 rounded-lg bg-zinc-800/60 p-0.5">
+								<button
+									type="button"
+									class={`flex items-center justify-center rounded px-1.5 py-1 transition-all ${
+										task.status === 'todo'
+											? 'bg-zinc-700 text-zinc-100 shadow-sm'
+											: archived
+												? 'text-zinc-600 hover:text-zinc-500'
+												: 'text-zinc-400 hover:text-zinc-300'
+									}`}
+									onclick={(e) => {
+										e.stopPropagation();
+										quickStatusUpdate(task, 'todo');
+									}}
+									title="To Do"
+									aria-label="Set status to To Do"
+								>
+									<Circle class="h-3.5 w-3.5" />
+								</button>
+								<button
+									type="button"
+									class={`flex items-center justify-center rounded px-1.5 py-1 shadow-sm transition-all ${
+										task.status === 'in_progress'
+											? ''
+											: archived
+												? 'text-zinc-600 hover:text-zinc-500'
+												: 'text-zinc-400 hover:text-zinc-300'
+									}`}
+									style={task.status === 'in_progress'
+										? (() => {
+												const hex = settings.getAccentHex();
+												const r = parseInt(hex.slice(1, 3), 16);
+												const g = parseInt(hex.slice(3, 5), 16);
+												const b = parseInt(hex.slice(5, 7), 16);
+												return `background-color: rgba(${r}, ${g}, ${b}, 0.2); color: ${settings.getAccentLightHex()}`;
+											})()
+										: ''}
+									onclick={(e) => {
+										e.stopPropagation();
+										quickStatusUpdate(task, 'in_progress');
+									}}
+									title="In Progress"
+									aria-label="Set status to In Progress"
+								>
+									<CircleDot class="h-3.5 w-3.5" />
+								</button>
+								<button
+									type="button"
+									class={`flex items-center justify-center rounded px-1.5 py-1 transition-all ${
+										task.status === 'done'
+											? 'bg-emerald-500/20 text-emerald-400 shadow-sm'
+											: archived
+												? 'text-zinc-600 hover:text-zinc-500'
+												: 'text-zinc-400 hover:text-zinc-300'
+									}`}
+									onclick={(e) => {
+										e.stopPropagation();
+										quickStatusUpdate(task, 'done');
+									}}
+									title="Done"
+									aria-label="Set status to Done"
+								>
+									<CheckCircle2 class="h-3.5 w-3.5" />
+								</button>
 							</div>
 						</div>
 
@@ -490,12 +766,14 @@
 							</div>
 						</div>
 					</div>
-				</button>
+				</div>
 			{/snippet}
 
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-				{#each activeTasks as task}
-					{@render taskCard(task, false)}
+				{#each activeTasks as task (task.id)}
+					<div animate:flip={{ duration: 300 }} transition:fade={{ duration: 200 }}>
+						{@render taskCard(task, false)}
+					</div>
 				{/each}
 			</div>
 
@@ -507,8 +785,10 @@
 				</div>
 
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-					{#each archivedTasks as task}
-						{@render taskCard(task, true)}
+					{#each archivedTasks as task (task.id)}
+						<div animate:flip={{ duration: 300 }} transition:fade={{ duration: 200 }}>
+							{@render taskCard(task, true)}
+						</div>
 					{/each}
 				</div>
 			{/if}
@@ -517,8 +797,19 @@
 				{#each currentWeek as day}
 					{@const dayTasks = getTasksForDay(day)}
 					{@const isToday = new Date().toDateString() === day.toDateString()}
+					{@const isDragOver = dragOverDate && dragOverDate.toDateString() === day.toDateString()}
 					<div
-						class={`flex min-h-[200px] flex-col gap-2 rounded-lg border p-2 ${isToday ? 'border-zinc-700 bg-zinc-900/40' : 'border-transparent'}`}
+						class={`flex min-h-[200px] flex-col gap-2 rounded-lg border p-2 transition-colors ${
+							isToday
+								? 'border-zinc-700 bg-zinc-900/40'
+								: isDragOver
+									? 'border-indigo-500/50 bg-zinc-800/50'
+									: 'border-transparent'
+						}`}
+						ondragover={handleDragOver}
+						ondragenter={(e) => handleDragEnter(e, day)}
+						ondragleave={handleDragLeave}
+						ondrop={(e) => handleDrop(e, day)}
 					>
 						<!-- Header -->
 						<div class="flex items-center justify-between border-b border-zinc-800 pb-2">
@@ -533,9 +824,18 @@
 						<!-- Tasks -->
 						<div class="flex flex-1 flex-col gap-2">
 							{#each dayTasks as task}
+								{@const isDragging = draggingTaskId === task.id}
 								<button
-									class="group flex flex-col gap-1 rounded border border-zinc-800 bg-zinc-900/60 p-2 text-left transition-colors hover:bg-zinc-800/80"
-									onclick={() => openEdit(task)}
+									draggable={true}
+									ondragstart={(e) => handleDragStart(e, task)}
+									class={`group flex flex-col gap-1 rounded border border-zinc-800 bg-zinc-900/60 p-2 text-left transition-all ${
+										isDragging ? 'cursor-grabbing opacity-50' : 'cursor-grab hover:bg-zinc-800/80'
+									}`}
+									onclick={() => {
+										if (!isDragging) {
+											openEdit(task);
+										}
+									}}
 								>
 									<div class="flex items-center gap-2">
 										{#if task.color}

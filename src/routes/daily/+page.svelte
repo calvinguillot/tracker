@@ -5,7 +5,17 @@
 	import ViewModal from '$lib/components/ViewModal.svelte';
 	import { onMount, untrack } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Plus, Loader, ArrowUp, ArrowDown, List, LayoutGrid } from 'lucide-svelte';
+	import {
+		Plus,
+		Loader,
+		ArrowUp,
+		ArrowDown,
+		List,
+		LayoutGrid,
+		CalendarDays,
+		ChevronLeft,
+		ChevronRight
+	} from 'lucide-svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
 
@@ -18,10 +28,114 @@
 	let isLoading = $state(true);
 
 	// View & Sorting
-	let viewMode = $state<'grid' | 'list'>('grid');
+	let viewMode = $state<'grid' | 'list' | 'heatmap'>('grid');
 	type SortField = 'created_at' | 'mood' | 'energy' | 'physical' | 'sleep' | 'meals' | 'weight';
 	let sortField = $state<SortField>('created_at');
 	let sortDirection = $state<'asc' | 'desc'>('desc');
+
+	// Heatmap State
+	let currentYear = $state(new Date().getFullYear());
+	let selectedMetric = $state<string>('work_type');
+
+	let entriesByDate = $derived.by(() => {
+		const map = new Map();
+		trackingData.forEach((entry) => {
+			if (entry.created_at) {
+				const dateKey = entry.created_at.split('T')[0];
+				map.set(dateKey, entry);
+			}
+		});
+		return map;
+	});
+
+	// Helper for Heatmap
+	function getDaysInMonth(year: number, month: number) {
+		const date = new Date(year, month, 1);
+		const days = [];
+		while (date.getMonth() === month) {
+			days.push(new Date(date));
+			date.setDate(date.getDate() + 1);
+		}
+		return days;
+	}
+
+	function getMonthGrid(year: number, month: number) {
+		const days = getDaysInMonth(year, month);
+		const firstDay = days[0].getDay(); // 0 = Sun, 1 = Mon
+		const offset = firstDay === 0 ? 6 : firstDay - 1; // Make Mon = 0
+		const grid = Array(offset).fill(null).concat(days);
+		return grid;
+	}
+
+	function getMetricValue(entry: any, metric: string) {
+		if (!entry) return 0;
+		const val = entry[metric];
+
+		if (
+			metric === 'weight' ||
+			metric === 'mood' ||
+			metric === 'energy' ||
+			metric === 'physical' ||
+			metric === 'sleep' ||
+			metric === 'meals'
+		) {
+			// Numeric fields, check if not null
+			return val !== null ? 1 : 0;
+		}
+
+		if (typeof val === 'boolean') return val ? 1 : 0;
+		if (Array.isArray(val)) return val.length > 0 ? 1 : 0;
+		// String (comma separated) or others
+		if (typeof val === 'string' && val.length > 0) return 1;
+		return 0;
+	}
+
+	function getLocalDateString(date: Date): string {
+		const y = date.getFullYear();
+		const m = String(date.getMonth() + 1).padStart(2, '0');
+		const d = String(date.getDate()).padStart(2, '0');
+		return `${y}-${m}-${d}`;
+	}
+
+	function getCellColor(date: Date, metric: string) {
+		const dateStr = getLocalDateString(date);
+		const entry = entriesByDate.get(dateStr);
+
+		if (!entry) return ''; // No entry - transparent, card background shows through
+
+		const hasValue = getMetricValue(entry, metric) > 0;
+
+		if (hasValue) {
+			// Use accent color for true values
+			const hex = settings.getAccentHex();
+			const r = parseInt(hex.slice(1, 3), 16);
+			const g = parseInt(hex.slice(3, 5), 16);
+			const b = parseInt(hex.slice(5, 7), 16);
+			return `background-color: rgba(${r}, ${g}, ${b}, 0.6)`;
+		} else {
+			return 'bg-zinc-700'; // Entry exists but metric is false
+		}
+	}
+
+	const booleanMetrics = [
+		'cry',
+		'friends',
+		'loving',
+		'ihana',
+		'call_family',
+		'calvin_day',
+		'sickness'
+	];
+
+	const typeMetrics = [
+		'work_type',
+		'study_type',
+		'culture_type',
+		'art_type',
+		'music_type',
+		'exercise_type',
+		'leisure_type'
+	];
 
 	let sortedTrackingData = $derived(
 		[...trackingData].sort((a, b) => {
@@ -158,12 +272,11 @@
 
 <section>
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Daily</h2>
 		{#if session && !isModalOpen && !isViewModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
-				class="fixed right-8 bottom-24 z-50 rounded-full border-0 bg-zinc-950/80 p-4 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110"
-				style="--accent-color: {settings.getAccentLightHex()}; border-color: {settings.getAccentLightHex()}"
+				class="fixed right-8 bottom-24 z-50 rounded-full p-4 shadow-lg/30 drop-shadow-lg backdrop-blur-md transition-all hover:scale-110 hover:brightness-110 md:right-16 md:bottom-16"
+				style="--accent-color: {settings.getAccentLightHex()}; background-color: {settings.getAccentHex()}/50"
 				aria-label="New Entry"
 			>
 				<Plus class="h-6 w-6 text-(--accent-color)" />
@@ -179,29 +292,74 @@
 		<!-- Controls -->
 		<div class="mb-4 flex flex-wrap items-center justify-between gap-4 text-sm">
 			<div class="flex flex-wrap items-center gap-4">
-				<div class="flex items-center gap-2">
-					<!-- <span class="text-zinc-500">Sort by:</span> -->
-					<select
-						bind:value={sortField}
-						class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
-					>
-						{#each ['date', 'mood', 'energy', 'physical', 'sleep', 'meals', 'weight'] as label}
-							{@const field = label === 'date' ? 'created_at' : label}
-							<option value={field}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>
-						{/each}
-					</select>
-					<button
-						class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
-						onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
-						aria-label="Toggle sort order"
-					>
-						{#if sortDirection === 'asc'}
-							<ArrowUp class="h-4 w-4" />
-						{:else}
-							<ArrowDown class="h-4 w-4" />
-						{/if}
-					</button>
-				</div>
+				{#if viewMode === 'heatmap'}
+					<div class="flex flex-wrap items-center gap-3">
+						<!-- Metric Selector -->
+						<select
+							bind:value={selectedMetric}
+							class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
+						>
+							<optgroup label="Metrics">
+								{#each booleanMetrics as metric}
+									<option value={metric}
+										>{metric.charAt(0).toUpperCase() + metric.slice(1).replace('_', ' ')}</option
+									>
+								{/each}
+							</optgroup>
+							<optgroup label="Activity Types">
+								{#each typeMetrics as metric}
+									<option value={metric}
+										>{metric.replace('_type', '').charAt(0).toUpperCase() +
+											metric.replace('_type', '').slice(1)}</option
+									>
+								{/each}
+							</optgroup>
+						</select>
+
+						<!-- Navigation -->
+						<div class="flex items-center gap-2">
+							<button
+								onclick={() => currentYear--}
+								class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+							>
+								<ChevronLeft class="h-4 w-4" />
+							</button>
+							<span class="min-w-[80px] text-center font-medium text-zinc-200">
+								{currentYear}
+							</span>
+							<button
+								onclick={() => currentYear++}
+								class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+							>
+								<ChevronRight class="h-4 w-4" />
+							</button>
+						</div>
+					</div>
+				{:else}
+					<div class="flex items-center gap-2">
+						<!-- <span class="text-zinc-500">Sort by:</span> -->
+						<select
+							bind:value={sortField}
+							class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
+						>
+							{#each ['date', 'mood', 'energy', 'physical', 'sleep', 'meals', 'weight'] as label}
+								{@const field = label === 'date' ? 'created_at' : label}
+								<option value={field}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>
+							{/each}
+						</select>
+						<button
+							class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+							onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
+							aria-label="Toggle sort order"
+						>
+							{#if sortDirection === 'asc'}
+								<ArrowUp class="h-4 w-4" />
+							{:else}
+								<ArrowDown class="h-4 w-4" />
+							{/if}
+						</button>
+					</div>
+				{/if}
 			</div>
 
 			<!-- View Toggle -->
@@ -219,6 +377,13 @@
 					aria-label="Grid View"
 				>
 					<LayoutGrid class="h-4 w-4" />
+				</button>
+				<button
+					class={`rounded-md p-1.5 transition-all ${viewMode === 'heatmap' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+					onclick={() => (viewMode = 'heatmap')}
+					aria-label="Heatmap View"
+				>
+					<CalendarDays class="h-4 w-4" />
 				</button>
 			</div>
 		</div>
@@ -339,6 +504,61 @@
 						{/each}
 					</tbody>
 				</table>
+			</div>
+		{:else if viewMode === 'heatmap'}
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+				{#each Array.from({ length: 12 }, (_, i) => i) as monthIndex}
+					<div class="flex flex-col gap-1">
+						<h3 class="mb-2 text-sm font-medium text-zinc-400">
+							{new Date(currentYear, monthIndex).toLocaleString('default', {
+								month: 'long'
+							})}
+						</h3>
+						<div
+							class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 transition-colors hover:border-zinc-700"
+						>
+							<!-- Day Headers -->
+							<div class="mb-1 grid grid-cols-7 gap-1">
+								{#each ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as day, i}
+									<div class="text-center text-sm {i >= 5 ? 'text-zinc-600' : 'text-zinc-500'}">
+										{day}
+									</div>
+								{/each}
+							</div>
+
+							<!-- Day Grid -->
+							<div class="grid grid-cols-7 gap-1">
+								{#each getMonthGrid(currentYear, monthIndex) as date}
+									{#if date}
+										{@const isWeekend = date.getDay() === 0 || date.getDay() === 6}
+										{@const today = new Date()}
+										{@const isToday =
+											date.getFullYear() === today.getFullYear() &&
+											date.getMonth() === today.getMonth() &&
+											date.getDate() === today.getDate()}
+										<button
+											class="flex aspect-square w-full items-center justify-center rounded-md border-2 text-sm font-medium transition-colors hover:brightness-110 {isToday
+												? 'border-white/80'
+												: 'border-transparent'} {isWeekend
+												? 'text-zinc-400/60'
+												: 'text-zinc-300/70'}"
+											style={getCellColor(date, selectedMetric)}
+											title={`${date.toDateString()}: ${entriesByDate.get(getLocalDateString(date)) ? (getMetricValue(entriesByDate.get(getLocalDateString(date)), selectedMetric) ? 'Yes' : 'No') : 'No Entry'}`}
+											onclick={() => {
+												const entry = entriesByDate.get(getLocalDateString(date));
+												if (entry) openView(entry);
+											}}
+										>
+											{date.getDate()}
+										</button>
+									{:else}
+										<div class="aspect-square w-full"></div>
+									{/if}
+								{/each}
+							</div>
+						</div>
+					</div>
+				{/each}
 			</div>
 		{:else}
 			<div

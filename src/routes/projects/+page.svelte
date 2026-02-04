@@ -52,6 +52,40 @@
 	let sortField = $state<SortField>('date');
 	let sortDirection = $state<'asc' | 'desc'>('desc');
 
+	function getChecklistCounts(checklist: any) {
+		if (!checklist) return { total: 0, completed: 0 };
+
+		// If it's the new format (array of checklists)
+		if (Array.isArray(checklist) && checklist.length > 0 && 'items' in checklist[0]) {
+			let total = 0;
+			let completed = 0;
+			checklist.forEach((list: any) => {
+				if (list.items) {
+					total += list.items.length;
+					completed += list.items.filter((i: any) => i.completed).length;
+				}
+			});
+			return { total, completed };
+		}
+
+		// Fallback for old/flat format if any (though projects didn't use it before)
+		if (Array.isArray(checklist) && checklist.length > 0) {
+			// flat list presumably
+			return {
+				total: checklist.length,
+				completed: checklist.filter((i: any) => i.completed).length
+			};
+		}
+
+		return { total: 0, completed: 0 };
+	}
+
+	function calculateProgress(checklist: any): number {
+		const counts = getChecklistCounts(checklist);
+		if (counts.total === 0) return 0;
+		return Math.round((counts.completed / counts.total) * 100);
+	}
+
 	let sortedProjects = $derived(
 		[...projects].sort((a, b) => {
 			const modifier = sortDirection === 'asc' ? 1 : -1;
@@ -63,7 +97,9 @@
 				const dateB = new Date(b.created_at).getTime();
 				return (dateA - dateB) * modifier;
 			} else if (sortField === 'progress') {
-				return ((a.percentage || 0) - (b.percentage || 0)) * modifier;
+				const progressA = calculateProgress(a.checklist);
+				const progressB = calculateProgress(b.checklist);
+				return (progressA - progressB) * modifier;
 			}
 			return 0;
 		})
@@ -212,6 +248,9 @@
 	async function handleSave(entry: any) {
 		const { id, ...payload } = entry;
 
+		// Calculate percentage based on checklist items
+		payload.percentage = calculateProgress(payload.checklist);
+
 		if (currentEntry) {
 			// Update
 			const { error } = await supabase.from('projects').update(payload).eq('id', currentEntry.id);
@@ -261,34 +300,6 @@
 				return 'bg-zinc-800 text-zinc-400';
 		}
 	};
-
-	function getChecklistCounts(checklist: any) {
-		if (!checklist) return { total: 0, completed: 0 };
-
-		// If it's the new format (array of checklists)
-		if (Array.isArray(checklist) && checklist.length > 0 && 'items' in checklist[0]) {
-			let total = 0;
-			let completed = 0;
-			checklist.forEach((list: any) => {
-				if (list.items) {
-					total += list.items.length;
-					completed += list.items.filter((i: any) => i.completed).length;
-				}
-			});
-			return { total, completed };
-		}
-
-		// Fallback for old/flat format if any (though projects didn't use it before)
-		if (Array.isArray(checklist) && checklist.length > 0) {
-			// flat list presumably
-			return {
-				total: checklist.length,
-				completed: checklist.filter((i: any) => i.completed).length
-			};
-		}
-
-		return { total: 0, completed: 0 };
-	}
 </script>
 
 <ProjectModal
@@ -301,12 +312,11 @@
 
 <section>
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Projects</h2>
 		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}
-				class="fixed right-8 bottom-24 z-50 rounded-full border-0 bg-zinc-950/80 p-4 shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110"
-				style="--accent-color: {settings.getAccentLightHex()}; border-color: {settings.getAccentLightHex()}"
+				class="fixed right-8 bottom-24 z-50 rounded-full p-4 shadow-lg/30 drop-shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110 md:right-16 md:bottom-16"
+				style="--accent-color: {settings.getAccentLightHex()}; background-color: {settings.getAccentHex()}/50"
 				aria-label="New Project"
 			>
 				<Plus class="h-6 w-6 text-(--accent-color)" />
@@ -444,34 +454,39 @@
 						</div>
 
 						<!-- Content Right (Progress) -->
-						<div class="flex w-full shrink-0 flex-col gap-2 md:w-56">
-							<div class="flex justify-end">
-								<span class={`rounded-full px-2 py-0.5 text-xs ${getStatusClasses(project.status)}`}
-									>{getStatusLabel(project.status)}</span
-								>
+						{#if true}
+							{@const progress = calculateProgress(project.checklist)}
+							<div class="flex w-full shrink-0 flex-col gap-2 md:w-56">
+								<div class="flex justify-end">
+									<span
+										class={`rounded-full px-2 py-0.5 text-xs ${getStatusClasses(project.status)}`}
+										>{getStatusLabel(project.status)}</span
+									>
+								</div>
+								<div class="flex items-center justify-between">
+									<span
+										class={`text-xs font-medium ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
+										>Progress</span
+									>
+									<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}
+										>{progress}%</span
+									>
+								</div>
+								<div class="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+									<div
+										class="h-full rounded-full transition-all duration-500 {project.colour &&
+										!project.colour.startsWith('#')
+											? project.colour
+											: ''}"
+										style:width="{progress}%"
+										style:background-color={project.colour && project.colour.startsWith('#')
+											? project.colour
+											: ''}
+										style:opacity={archived ? 0.5 : 1}
+									></div>
+								</div>
 							</div>
-							<div class="flex items-center justify-between">
-								<span class={`text-xs font-medium ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
-									>Progress</span
-								>
-								<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}
-									>{project.percentage || 0}%</span
-								>
-							</div>
-							<div class="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-								<div
-									class="h-full rounded-full transition-all duration-500 {project.colour &&
-									!project.colour.startsWith('#')
-										? project.colour
-										: ''}"
-									style:width="{project.percentage || 0}%"
-									style:background-color={project.colour && project.colour.startsWith('#')
-										? project.colour
-										: ''}
-									style:opacity={archived ? 0.5 : 1}
-								></div>
-							</div>
-						</div>
+						{/if}
 					</div>
 
 					<!-- Row 2: Funds/Dates -->
