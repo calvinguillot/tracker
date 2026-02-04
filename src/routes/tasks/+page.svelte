@@ -54,6 +54,9 @@
 
 	let weekOffset = $state(0); // 0 = current week, -1 = last week, 1 = next week
 
+	let draggingTaskId = $state<number | null>(null);
+	let dragOverDate = $state<Date | null>(null);
+
 	let filteredTasks = $derived(
 		filterType === 'all' ? tasks : tasks.filter((t) => t.type === filterType)
 	);
@@ -154,6 +157,86 @@
 				d.getDate() === date.getDate()
 			);
 		});
+	}
+
+	function handleDragStart(event: DragEvent, task: Task) {
+		draggingTaskId = task.id;
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'move';
+			event.dataTransfer.setData('text/plain', task.id.toString());
+		}
+	}
+
+	function handleDragOver(event: DragEvent) {
+		event.preventDefault();
+		if (event.dataTransfer) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+	}
+
+	function handleDragEnter(event: DragEvent, date: Date) {
+		event.preventDefault();
+		dragOverDate = date;
+	}
+
+	function handleDragLeave(event: DragEvent) {
+		// Only clear if we're leaving the day column, not entering a child element
+		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		const x = event.clientX;
+		const y = event.clientY;
+		if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+			dragOverDate = null;
+		}
+	}
+
+	async function handleDrop(event: DragEvent, targetDate: Date) {
+		event.preventDefault();
+		dragOverDate = null;
+
+		if (draggingTaskId === null) return;
+
+		const task = tasks.find((t) => t.id === draggingTaskId);
+		if (!task) {
+			draggingTaskId = null;
+			return;
+		}
+
+		// Calculate new deadline_at
+		let newDeadline: Date;
+		if (task.deadline_at) {
+			// Preserve the original time, just update the date
+			const originalDeadline = new Date(task.deadline_at);
+			newDeadline = new Date(targetDate);
+			newDeadline.setHours(
+				originalDeadline.getHours(),
+				originalDeadline.getMinutes(),
+				originalDeadline.getSeconds(),
+				originalDeadline.getMilliseconds()
+			);
+		} else {
+			// No existing deadline, use the target date (which is 00:00:00)
+			newDeadline = new Date(targetDate);
+		}
+
+		const newDeadlineIso = newDeadline.toISOString();
+
+		// Optimistic update
+		tasks = tasks.map((t) => (t.id === draggingTaskId ? { ...t, deadline_at: newDeadlineIso } : t));
+
+		// Persist to database
+		const { error } = await supabase
+			.from('tasks')
+			.update({ deadline_at: newDeadlineIso })
+			.eq('id', draggingTaskId);
+
+		if (error) {
+			console.error('Error updating task deadline:', error);
+			showAlert('Error updating deadline: ' + error.message, 'Error');
+			// Revert on error
+			fetchData();
+		}
+
+		draggingTaskId = null;
 	}
 
 	onMount(() => {
@@ -715,8 +798,19 @@
 				{#each currentWeek as day}
 					{@const dayTasks = getTasksForDay(day)}
 					{@const isToday = new Date().toDateString() === day.toDateString()}
+					{@const isDragOver = dragOverDate && dragOverDate.toDateString() === day.toDateString()}
 					<div
-						class={`flex min-h-[200px] flex-col gap-2 rounded-lg border p-2 ${isToday ? 'border-zinc-700 bg-zinc-900/40' : 'border-transparent'}`}
+						class={`flex min-h-[200px] flex-col gap-2 rounded-lg border p-2 transition-colors ${
+							isToday
+								? 'border-zinc-700 bg-zinc-900/40'
+								: isDragOver
+									? 'border-indigo-500/50 bg-zinc-800/50'
+									: 'border-transparent'
+						}`}
+						ondragover={handleDragOver}
+						ondragenter={(e) => handleDragEnter(e, day)}
+						ondragleave={handleDragLeave}
+						ondrop={(e) => handleDrop(e, day)}
 					>
 						<!-- Header -->
 						<div class="flex items-center justify-between border-b border-zinc-800 pb-2">
@@ -731,9 +825,18 @@
 						<!-- Tasks -->
 						<div class="flex flex-1 flex-col gap-2">
 							{#each dayTasks as task}
+								{@const isDragging = draggingTaskId === task.id}
 								<button
-									class="group flex flex-col gap-1 rounded border border-zinc-800 bg-zinc-900/60 p-2 text-left transition-colors hover:bg-zinc-800/80"
-									onclick={() => openEdit(task)}
+									draggable={true}
+									ondragstart={(e) => handleDragStart(e, task)}
+									class={`group flex flex-col gap-1 rounded border border-zinc-800 bg-zinc-900/60 p-2 text-left transition-all ${
+										isDragging ? 'cursor-grabbing opacity-50' : 'cursor-grab hover:bg-zinc-800/80'
+									}`}
+									onclick={() => {
+										if (!isDragging) {
+											openEdit(task);
+										}
+									}}
 								>
 									<div class="flex items-center gap-2">
 										{#if task.color}
