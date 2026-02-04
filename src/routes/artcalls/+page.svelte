@@ -252,7 +252,6 @@
 
 <section>
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Art Calls</h2>
 		{#if session && !isModalOpen && !alertState.isOpen}
 			<button
 				onclick={openNew}

@@ -24,7 +24,6 @@
 		funds: null as number | null,
 		status: 0,
 		type: null as number | null,
-		percentage: 0,
 		start_at: '',
 		end_at: '',
 		colour: 'bg-indigo-600',
@@ -43,7 +42,6 @@
 					funds: entry.funds,
 					status: entry.status ?? 0,
 					type: entry.type ?? null,
-					percentage: entry.percentage ?? 0,
 					start_at: entry.start_at ? new Date(entry.start_at).toISOString().split('T')[0] : '',
 					end_at: entry.end_at ? new Date(entry.end_at).toISOString().split('T')[0] : '',
 					colour: entry.colour || 'bg-indigo-600',
@@ -58,7 +56,6 @@
 					funds: null,
 					status: 0,
 					type: null,
-					percentage: 0,
 					start_at: '',
 					end_at: '',
 					colour: 'bg-indigo-600',
@@ -273,60 +270,44 @@
 					</div>
 				</div>
 
-				<!-- Percentage & Type -->
-				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-					<div>
-						<label for="percentage" class="mb-1 block text-sm font-medium text-zinc-400"
-							>Progress ({formData.percentage}%)</label
+				<!-- Type -->
+				<div>
+					<label for="type" class="mb-1 block text-sm font-medium text-zinc-400">Type</label>
+					<div class="flex items-center gap-2">
+						<select
+							id="type"
+							bind:value={formData.type}
+							onchange={handleTypeChange}
+							class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 						>
-						<input
-							type="range"
-							id="percentage"
-							min="0"
-							max="100"
-							bind:value={formData.percentage}
-							class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-zinc-700 accent-indigo-500"
-						/>
-					</div>
-
-					<div>
-						<label for="type" class="mb-1 block text-sm font-medium text-zinc-400">Type</label>
-						<div class="flex items-center gap-2">
-							<select
-								id="type"
-								bind:value={formData.type}
-								onchange={handleTypeChange}
-								class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-							>
-								<option value={null}>Select Type</option>
-								{#each settings.settings.project_types as t}
-									<option value={t.id}>{t.label}</option>
-								{/each}
-							</select>
-							{#if formData.colour}
-								<div
-									class="h-8 w-8 shrink-0 rounded-full border border-zinc-600 shadow-sm"
-									style={formData.colour.startsWith('#')
-										? `background-color: ${formData.colour}`
-										: ''}
-									class:bg-zinc-500={formData.colour === 'bg-zinc-500'}
-									class:bg-red-600={formData.colour === 'bg-red-600'}
-									class:bg-orange-600={formData.colour === 'bg-orange-600'}
-									class:bg-amber-500={formData.colour === 'bg-amber-500'}
-									class:bg-green-600={formData.colour === 'bg-green-600'}
-									class:bg-emerald-500={formData.colour === 'bg-emerald-500'}
-									class:bg-teal-500={formData.colour === 'bg-teal-500'}
-									class:bg-cyan-500={formData.colour === 'bg-cyan-500'}
-									class:bg-blue-600={formData.colour === 'bg-blue-600'}
-									class:bg-indigo-600={formData.colour === 'bg-indigo-600'}
-									class:bg-violet-600={formData.colour === 'bg-violet-600'}
-									class:bg-purple-600={formData.colour === 'bg-purple-600'}
-									class:bg-fuchsia-600={formData.colour === 'bg-fuchsia-600'}
-									class:bg-pink-600={formData.colour === 'bg-pink-600'}
-									class:bg-rose-600={formData.colour === 'bg-rose-600'}
-								></div>
-							{/if}
-						</div>
+							<option value={null}>Select Type</option>
+							{#each settings.settings.project_types as t}
+								<option value={t.id}>{t.label}</option>
+							{/each}
+						</select>
+						{#if formData.colour}
+							<div
+								class="h-8 w-8 shrink-0 rounded-full border border-zinc-600 shadow-sm"
+								style={formData.colour.startsWith('#')
+									? `background-color: ${formData.colour}`
+									: ''}
+								class:bg-zinc-500={formData.colour === 'bg-zinc-500'}
+								class:bg-red-600={formData.colour === 'bg-red-600'}
+								class:bg-orange-600={formData.colour === 'bg-orange-600'}
+								class:bg-amber-500={formData.colour === 'bg-amber-500'}
+								class:bg-green-600={formData.colour === 'bg-green-600'}
+								class:bg-emerald-500={formData.colour === 'bg-emerald-500'}
+								class:bg-teal-500={formData.colour === 'bg-teal-500'}
+								class:bg-cyan-500={formData.colour === 'bg-cyan-500'}
+								class:bg-blue-600={formData.colour === 'bg-blue-600'}
+								class:bg-indigo-600={formData.colour === 'bg-indigo-600'}
+								class:bg-violet-600={formData.colour === 'bg-violet-600'}
+								class:bg-purple-600={formData.colour === 'bg-purple-600'}
+								class:bg-fuchsia-600={formData.colour === 'bg-fuchsia-600'}
+								class:bg-pink-600={formData.colour === 'bg-pink-600'}
+								class:bg-rose-600={formData.colour === 'bg-rose-600'}
+							></div>
+						{/if}
 					</div>
 				</div>
 
