@@ -10,8 +10,13 @@
 		ListChecks,
 		Link as LinkIcon,
 		List,
-		Calendar
+		Calendar,
+		Circle,
+		CircleDot,
+		CheckCircle2
 	} from 'lucide-svelte';
+	import { flip } from 'svelte/animate';
+	import { fade, fly } from 'svelte/transition';
 	import TaskModal from '$lib/components/TaskModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
@@ -234,6 +239,29 @@
 		}
 	}
 
+	async function quickStatusUpdate(task: Task, newStatus: string) {
+		const payload: any = { status: newStatus };
+		if (newStatus === 'done') {
+			payload.completed_at = new Date().toISOString();
+		} else {
+			payload.completed_at = null;
+		}
+
+		// Optimistic update - modify local state immediately
+		tasks = tasks.map((t) =>
+			t.id === task.id ? { ...t, status: newStatus, completed_at: payload.completed_at } : t
+		);
+
+		const { error } = await supabase.from('tasks').update(payload).eq('id', task.id);
+
+		if (error) {
+			console.error('Error updating task status:', error);
+			showAlert('Error updating status: ' + error.message, 'Error');
+			// Revert on error
+			fetchData();
+		}
+	}
+
 	const formatDate = (value: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
 	function truncatePreview(text: string | null, max = maxCharDescriptionLength) {
 		if (!text) return '';
@@ -395,18 +423,24 @@
 
 		{#if viewMode === 'list'}
 			{#snippet taskCard(task: Task, archived: boolean)}
-				{@const statusStyle = getStatusColor(task.status)}
-				<button
-					type="button"
+				<div
 					class={`group relative flex w-full cursor-pointer flex-col justify-between rounded-lg border p-4 text-left transition-all ${
 						archived
 							? 'border-zinc-800/60 bg-zinc-900/30 text-zinc-500 hover:border-zinc-700/60 hover:bg-zinc-900/40'
 							: 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900/80'
 					}`}
 					onclick={() => openEdit(task)}
+					role="button"
+					tabindex={0}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							openEdit(task);
+						}
+					}}
 				>
 					<div class="flex flex-col gap-3">
-						<!-- Header: Title, Status -->
+						<!-- Header: Title, Status Toggle -->
 						<div class="flex items-start justify-between gap-3">
 							<div class="min-w-0 flex-1">
 								<div class="flex flex-wrap items-center gap-2">
@@ -425,13 +459,7 @@
 									</h3>
 								</div>
 								<div class="mt-1 flex items-center gap-2 text-xs">
-									<div
-										class={`shrink-0 rounded-full px-2 py-0.5 font-medium ${statusStyle.bg} ${statusStyle.text}`}
-									>
-										{getStatusLabel(task.status)}
-									</div>
 									{#if task.type}
-										<span class="text-zinc-500">•</span>
 										<span class={archived ? 'text-zinc-600' : 'text-zinc-400'}
 											>{settings.getTaskType(task.type)?.label ?? task.type}</span
 										>
@@ -439,7 +467,9 @@
 									{#if task.checklist}
 										{@const counts = getChecklistCounts(task.checklist)}
 										{#if counts.total > 0}
-											<span class="text-zinc-500">•</span>
+											{#if task.type}
+												<span class="text-zinc-500">•</span>
+											{/if}
 											<ListChecks
 												class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`}
 											/>
@@ -449,13 +479,72 @@
 										{/if}
 									{/if}
 									{#if task.links && task.links.length > 0}
-										<span class="text-zinc-500">•</span>
+										{#if task.type || (task.checklist && getChecklistCounts(task.checklist).total > 0)}
+											<span class="text-zinc-500">•</span>
+										{/if}
 										<LinkIcon class={`h-4 w-4 ${archived ? 'text-zinc-600' : 'text-zinc-400'}`} />
 										<span class={`text-xs ${archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
 											{task.links.length}
 										</span>
 									{/if}
 								</div>
+							</div>
+							<!-- Triple Toggle: Todo | In Progress | Done -->
+							<div class="flex items-center gap-0.5 rounded-lg bg-zinc-800/60 p-0.5">
+								<button
+									type="button"
+									class={`flex items-center justify-center rounded px-1.5 py-1 transition-all ${
+										task.status === 'todo'
+											? 'bg-zinc-700 text-zinc-100 shadow-sm'
+											: archived
+												? 'text-zinc-600 hover:text-zinc-500'
+												: 'text-zinc-400 hover:text-zinc-300'
+									}`}
+									onclick={(e) => {
+										e.stopPropagation();
+										quickStatusUpdate(task, 'todo');
+									}}
+									title="To Do"
+									aria-label="Set status to To Do"
+								>
+									<Circle class="h-3.5 w-3.5" />
+								</button>
+								<button
+									type="button"
+									class={`flex items-center justify-center rounded px-1.5 py-1 transition-all ${
+										task.status === 'in_progress'
+											? 'bg-indigo-500/20 text-indigo-400 shadow-sm'
+											: archived
+												? 'text-zinc-600 hover:text-zinc-500'
+												: 'text-zinc-400 hover:text-zinc-300'
+									}`}
+									onclick={(e) => {
+										e.stopPropagation();
+										quickStatusUpdate(task, 'in_progress');
+									}}
+									title="In Progress"
+									aria-label="Set status to In Progress"
+								>
+									<CircleDot class="h-3.5 w-3.5" />
+								</button>
+								<button
+									type="button"
+									class={`flex items-center justify-center rounded px-1.5 py-1 transition-all ${
+										task.status === 'done'
+											? 'bg-emerald-500/20 text-emerald-400 shadow-sm'
+											: archived
+												? 'text-zinc-600 hover:text-zinc-500'
+												: 'text-zinc-400 hover:text-zinc-300'
+									}`}
+									onclick={(e) => {
+										e.stopPropagation();
+										quickStatusUpdate(task, 'done');
+									}}
+									title="Done"
+									aria-label="Set status to Done"
+								>
+									<CheckCircle2 class="h-3.5 w-3.5" />
+								</button>
 							</div>
 						</div>
 
@@ -490,12 +579,14 @@
 							</div>
 						</div>
 					</div>
-				</button>
+				</div>
 			{/snippet}
 
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-				{#each activeTasks as task}
-					{@render taskCard(task, false)}
+				{#each activeTasks as task (task.id)}
+					<div animate:flip={{ duration: 300 }} transition:fade={{ duration: 200 }}>
+						{@render taskCard(task, false)}
+					</div>
 				{/each}
 			</div>
 
@@ -507,8 +598,10 @@
 				</div>
 
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-					{#each archivedTasks as task}
-						{@render taskCard(task, true)}
+					{#each archivedTasks as task (task.id)}
+						<div animate:flip={{ duration: 300 }} transition:fade={{ duration: 200 }}>
+							{@render taskCard(task, true)}
+						</div>
 					{/each}
 				</div>
 			{/if}
