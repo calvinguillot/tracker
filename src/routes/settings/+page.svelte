@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { settings, PALETTE, type SettingItem } from '$lib/settingsStore.svelte';
-	import { Plus, Trash2, Save, Loader, Download } from 'lucide-svelte';
+	import { Plus, Trash2, Save, LoaderCircle, Download } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { showAlert } from '$lib/alertStore.svelte';
 	import { supabase } from '$lib/supabaseClient';
@@ -144,7 +144,7 @@
 
 	{#if isLoading}
 		<div class="flex h-48 items-center justify-center">
-			<Loader class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
+			<LoaderCircle class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
 		</div>
 	{:else}
 		<!-- Global Accent -->

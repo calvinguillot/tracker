@@ -2,10 +2,11 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Loader, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
+	import { LoaderCircle, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
 	import NoteModal from '$lib/components/NoteModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { dataStore } from '$lib/dataStore.svelte';
 
 	type Note = {
 		id: number;
@@ -16,8 +17,7 @@
 	};
 
 	let session = $state<Session | null>(null);
-	let isLoading = $state(true);
-	let notes = $state<Note[]>([]);
+	let notes = $derived(dataStore.notes);
 	let isModalOpen = $state(false);
 	let currentEntry = $state<Note | null>(null);
 
@@ -53,37 +53,16 @@
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
-			if (s) fetchData();
-			else isLoading = false;
 		});
 
 		const {
 			data: { subscription }
 		} = supabase.auth.onAuthStateChange((_event, _session) => {
 			session = _session;
-			if (_session) fetchData();
-			else isLoading = false;
 		});
 
 		return () => subscription.unsubscribe();
 	});
-
-	async function fetchData() {
-		isLoading = true;
-		console.log('Fetching notes...');
-		const { data: d, error } = await supabase
-			.from('notes')
-			.select('id, created_at, title, body, color')
-			.order('created_at', { ascending: false });
-
-		if (!error && d) {
-			notes = d;
-		} else if (error) {
-			console.error('Error fetching notes:', error);
-		}
-
-		isLoading = false;
-	}
 
 	function openNew() {
 		currentEntry = null;
@@ -111,7 +90,7 @@
 			showAlert('Error deleting: ' + error.message, 'Error');
 		} else {
 			showAlert('Note deleted successfully!', 'Success');
-			fetchData();
+			dataStore.deleteNote(id);
 		}
 	}
 
@@ -120,7 +99,12 @@
 
 		if (currentEntry) {
 			// Update
-			const { error } = await supabase.from('notes').update(payload).eq('id', currentEntry.id);
+			const { data, error } = await supabase
+				.from('notes')
+				.update(payload)
+				.eq('id', currentEntry.id)
+				.select()
+				.single();
 
 			if (error) {
 				console.error('Error updating note:', error);
@@ -128,11 +112,11 @@
 			} else {
 				showAlert('Note updated successfully!', 'Success');
 				isModalOpen = false;
-				fetchData();
+				if (data) dataStore.updateNote(data);
 			}
 		} else {
 			// Insert
-			const { error } = await supabase.from('notes').insert(payload);
+			const { data, error } = await supabase.from('notes').insert(payload).select().single();
 
 			if (error) {
 				console.error('Error saving note:', error);
@@ -140,7 +124,7 @@
 			} else {
 				showAlert('Note saved successfully!', 'Success');
 				isModalOpen = false;
-				fetchData();
+				if (data) dataStore.addNote(data);
 			}
 		}
 	}
@@ -177,11 +161,7 @@
 		{/if}
 	</div>
 
-	{#if isLoading && session !== null}
-		<div class="flex h-48 items-center justify-center">
-			<Loader class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
-		</div>
-	{:else if !session}
+	{#if !session}
 		<div class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6 text-zinc-400">
 			Sign in to view notes.
 		</div>

@@ -14,6 +14,7 @@
 	import SharedTooltip from '$lib/components/chart/SharedTooltip.svelte';
 	import { showAlert, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { dataStore } from '$lib/dataStore.svelte';
 	import { Capacitor } from '@capacitor/core';
 
 	// Types for today's deadlines
@@ -40,17 +41,45 @@
 
 	let { data } = $props();
 	let session = $state<Session | null>(null);
-	let isLoading = $state(true);
-	let isStatsLoading = $state(false);
+	// let isLoading = $state(true); // Removed
+	// let isStatsLoading = $state(false); // Removed
 
-	let rawData = $state<any[]>([]);
-	let appliedArtCallsCount = $state(0);
-	let completedProjectsCount = $state(0);
-	let completedTasksCount = $state(0);
+	let rawData = $derived(dataStore.dailyTracking);
+
+	let appliedArtCallsCount = $derived(dataStore.artCalls.filter((a) => a.applied).length);
+	let completedProjectsCount = $derived(dataStore.projects.filter((p) => p.status === 3).length);
+	let completedTasksCount = $derived(dataStore.tasks.filter((t) => t.status === 'done').length);
 
 	// Today's deadlines
-	let todayTasks = $state<TodayTask[]>([]);
-	let todayArtCalls = $state<TodayArtCall[]>([]);
+	let todayTasks = $derived.by(() => {
+		const today = new Date();
+		const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+		const start = todayStr + 'T00:00:00';
+		const end = todayStr + 'T23:59:59';
+
+		return dataStore.tasks
+			.filter((t) => {
+				if (t.status === 'done') return false;
+				if (!t.deadline_at) return false;
+				return t.deadline_at >= start && t.deadline_at <= end;
+			})
+			.sort((a, b) => a.deadline_at.localeCompare(b.deadline_at));
+	});
+
+	let todayArtCalls = $derived.by(() => {
+		const today = new Date();
+		const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+		const start = todayStr + 'T00:00:00';
+		const end = todayStr + 'T23:59:59';
+
+		return dataStore.artCalls
+			.filter((a) => {
+				if (a.applied) return false;
+				if (!a.deadline) return false;
+				return a.deadline >= start && a.deadline <= end;
+			})
+			.sort((a, b) => a.deadline.localeCompare(b.deadline));
+	});
 
 	// Combined and sorted deadlines for today
 	let todayDeadlines = $derived.by(() => {
@@ -58,6 +87,8 @@
 			...todayTasks.map((t) => ({ kind: 'task' as const, data: t })),
 			...todayArtCalls.map((a) => ({ kind: 'artcall' as const, data: a }))
 		];
+		// Tasks are already sorted, but mixing them might require re-sort if we care about time within day (if any)
+		// For now, task/artcall order is fine.
 		return items;
 	});
 
@@ -220,109 +251,16 @@
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
-			if (s) {
-				fetchData();
-				fetchProjectStats();
-			} else isLoading = false;
 		});
 
 		const {
 			data: { subscription }
 		} = supabase.auth.onAuthStateChange((_event, _session) => {
 			session = _session;
-			if (_session) {
-				fetchData();
-				fetchProjectStats();
-			} else isLoading = false;
 		});
 
 		return () => subscription.unsubscribe();
 	});
-
-	async function fetchData() {
-		isLoading = true;
-		const { data: d, error } = await supabase
-			.from('dailyTracking')
-			.select(
-				'created_at, mood, energy, physical, sleep, meals, weight, exercise_type, ihana, calvin_day, sickness, work_type, study_type, culture_type, art_type, music_type, leisure_type, call_family, cry, loving, friends'
-			)
-			.order('created_at', { ascending: true });
-
-		if (!error && d) {
-			rawData = d;
-		} else if (error) {
-			console.error('Error fetching data:', error);
-		}
-		isLoading = false;
-	}
-
-	async function fetchProjectStats() {
-		isStatsLoading = true;
-
-		// Get today's date in YYYY-MM-DD format for filtering
-		const today = new Date();
-		const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
-		const [
-			{ count: appliedCount, error: appliedError },
-			{ count: completedCount, error: completedError },
-			{ count: completedTasksCountRes, error: completedTasksError },
-			{ data: tasksToday, error: tasksTodayError },
-			{ data: artCallsToday, error: artCallsTodayError }
-		] = await Promise.all([
-			supabase.from('artCalls').select('id', { count: 'exact', head: true }).eq('applied', true),
-			supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 3),
-			supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'done'),
-			// Fetch tasks with deadline today (not done)
-			supabase
-				.from('tasks')
-				.select('id, title, status, type, color, deadline_at')
-				.gte('deadline_at', todayStr + 'T00:00:00')
-				.lte('deadline_at', todayStr + 'T23:59:59')
-				.neq('status', 'done')
-				.order('deadline_at', { ascending: true }),
-			// Fetch art calls with deadline today (not applied)
-			supabase
-				.from('artCalls')
-				.select('id, name, location, type, funds, deadline, applied')
-				.gte('deadline', todayStr + 'T00:00:00')
-				.lte('deadline', todayStr + 'T23:59:59')
-				.eq('applied', false)
-				.order('deadline', { ascending: true })
-		]);
-
-		if (appliedError) {
-			console.error('Error fetching applied art calls count:', appliedError);
-		} else {
-			appliedArtCallsCount = appliedCount ?? 0;
-		}
-
-		if (completedError) {
-			console.error('Error fetching completed projects count:', completedError);
-		} else {
-			completedProjectsCount = completedCount ?? 0;
-		}
-
-		if (completedTasksError) {
-			console.error('Error fetching completed tasks count:', completedTasksError);
-		} else {
-			completedTasksCount = completedTasksCountRes ?? 0;
-		}
-
-		if (tasksTodayError) {
-			console.error('Error fetching today tasks:', tasksTodayError);
-		} else {
-			todayTasks = tasksToday ?? [];
-		}
-
-		if (artCallsTodayError) {
-			console.error('Error fetching today art calls:', artCallsTodayError);
-		} else {
-			todayArtCalls = artCallsToday ?? [];
-		}
-
-		isStatsLoading = false;
-	}
 
 	function toggleMetric(key: string) {
 		const k = key as MetricKey;
@@ -432,11 +370,7 @@
 </script>
 
 <div class="flex flex-1 flex-col">
-	{#if isLoading}
-		<div class="flex h-64 items-center justify-center">
-			<Loader class="h-8 w-8 animate-spin" style="color: {settings.getAccentHex()}" />
-		</div>
-	{:else if session}
+	{#if session}
 		<div class="space-y-4">
 			<!-- Main Content: Chart + Events + Today's Tasks side by side on desktop -->
 			<!-- Desktop: 1/2 Chart, 1/4 Events, 1/4 Today's Tasks + Done -->
@@ -548,56 +482,61 @@
 							<div
 								class="absolute top-4 left-1/2 z-10 -translate-x-1/2 text-sm font-semibold text-zinc-300"
 							>
-								Progress
+								{filteredData.length} Entries
 							</div>
 							<LayerCake
-								padding={{ top: 36, right: 15, bottom: 32, left: 30 }}
-								x={(d: any) => d.created_at}
+								padding={{ top: 20, right: 10, bottom: 20, left: 25 }}
+								x="created_at"
+								y="value"
 								{yDomain}
-								data={filteredData}
 								xScale={scaleTime()}
+								data={filteredData}
 							>
+								<Html>
+									<AxisX
+										gridlines={false}
+										ticks={filteredData.length > 10 ? 5 : filteredData.length}
+										formatTick={formatTime}
+										tickMarks={true}
+									/>
+									<AxisY gridlines={true} ticks={5} tickMarks={true} />
+								</Html>
 								<Svg>
-									<AxisX gridlines={false} ticks={5} format={formatTime} dy={12} />
-									<AxisY ticks={4} gridlines={true} />
 									{#each Object.entries(activeMetrics) as [key, config]}
 										{#if config.active}
-											<Line stroke={config.color} yAccessorKey={key} />
+											<Line
+												stroke={config.color}
+												y={(d: any) => d[key] ?? 0}
+												width={2}
+												curve={false}
+											/>
 										{/if}
 									{/each}
 								</Svg>
 								<Html>
-									<SharedTooltip
-										labels={Object.fromEntries(
-											Object.entries(activeMetrics)
-												.filter(([k, v]) => v.active)
-												.map(([k, v]) => [k, { text: v.label, color: v.color }])
-										)}
-										formatTitle={formatTime}
-									/>
+									<SharedTooltip dataset={filteredData} formatTitle={formatTime} {activeMetrics} />
 								</Html>
 							</LayerCake>
 						</div>
 					{:else}
-						<div class="rounded-lg bg-zinc-900 p-8 text-center text-zinc-400 shadow-lg">
-							Not enough data to display chart. Add more entries!
+						<div
+							class="flex h-[400px] w-full items-center justify-center rounded-lg bg-zinc-900 shadow-lg"
+						>
+							<span class="text-zinc-500">Not enough data to display chart</span>
 						</div>
 					{/if}
 				</div>
 
-				<!-- Events - 1/4 width on desktop, third on mobile -->
+				<!-- Events Column - 1/4 width on desktop, third on mobile -->
 				{#if filteredData.length > 0}
 					<div class="order-3 space-y-3 lg:order-2 lg:col-span-1">
 						<div class="flex items-center justify-between">
 							<h2 class="text-lg font-semibold text-zinc-100">Events</h2>
 							<button
 								onclick={() => (eventsCurrentMonthOnly = !eventsCurrentMonthOnly)}
-								class="flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium transition-colors {eventsCurrentMonthOnly
-									? ''
-									: 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}"
-								style={eventsCurrentMonthOnly
-									? `background-color: ${settings.getAccentHex()}33; color: ${settings.getAccentLightHex()}`
-									: ''}
+								class="text-xs font-medium text-indigo-400 hover:text-indigo-300"
+								title={eventsCurrentMonthOnly ? 'Show all time' : 'Show current month'}
+								style={!eventsCurrentMonthOnly ? `color: ${settings.getAccentLightHex()}` : ''}
 							>
 								{eventsCurrentMonthOnly ? 'This Month' : 'All Time'}
 							</button>
@@ -629,11 +568,7 @@
 					<div class="order-2 space-y-3 lg:order-3 lg:col-span-1">
 						<!-- Today's Tasks Section -->
 						<h2 class="text-lg font-semibold text-zinc-100">Today's Tasks</h2>
-						{#if isStatsLoading}
-							<div class="flex h-16 items-center justify-center">
-								<Loader class="h-5 w-5 animate-spin" style="color: {settings.getAccentHex()}" />
-							</div>
-						{:else if todayDeadlines.length === 0}
+						{#if todayDeadlines.length === 0}
 							<div class="rounded-lg bg-zinc-900/60 px-3 py-4 text-center text-sm text-zinc-500">
 								No deadlines for today
 							</div>
@@ -713,7 +648,7 @@
 										<div class="text-xs font-medium text-zinc-300">Applied Art Calls</div>
 									</div>
 									<div class="text-xl font-bold text-white">
-										{isStatsLoading ? '—' : appliedArtCallsCount}
+										{appliedArtCallsCount}
 									</div>
 								</div>
 							</div>
@@ -726,7 +661,7 @@
 										<div class="text-xs font-medium text-zinc-300">Completed Projects</div>
 									</div>
 									<div class="text-xl font-bold text-white">
-										{isStatsLoading ? '—' : completedProjectsCount}
+										{completedProjectsCount}
 									</div>
 								</div>
 							</div>
@@ -739,7 +674,7 @@
 										<div class="text-xs font-medium text-zinc-300">Completed Tasks</div>
 									</div>
 									<div class="text-xl font-bold text-white">
-										{isStatsLoading ? '—' : completedTasksCount}
+										{completedTasksCount}
 									</div>
 								</div>
 							</div>

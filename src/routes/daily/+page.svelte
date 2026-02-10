@@ -7,7 +7,7 @@
 	import type { Session } from '@supabase/supabase-js';
 	import {
 		Plus,
-		Loader,
+		LoaderCircle,
 		ArrowUp,
 		ArrowDown,
 		List,
@@ -18,14 +18,14 @@
 	} from 'lucide-svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { dataStore } from '$lib/dataStore.svelte';
 
 	let { data } = $props();
-	let trackingData = $state<any[]>(untrack(() => data.dailyTracking));
+	let trackingData = $derived(dataStore.dailyTracking);
 	let isModalOpen = $state(false);
 	let isViewModalOpen = $state(false);
 	let currentEntry = $state<any>(null);
 	let session = $state<Session | null>(null);
-	let isLoading = $state(true);
 
 	// View & Sorting
 	let viewMode = $state<'grid' | 'list' | 'heatmap'>('grid');
@@ -157,32 +157,16 @@
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
-			if (s) fetchData();
-			else isLoading = false;
 		});
 
 		const {
 			data: { subscription }
 		} = supabase.auth.onAuthStateChange((_event, _session) => {
 			session = _session;
-			if (_session) fetchData();
-			else isLoading = false;
 		});
 
 		return () => subscription.unsubscribe();
 	});
-
-	async function fetchData() {
-		isLoading = true;
-		const { data: d, error } = await supabase
-			.from('dailyTracking')
-			.select()
-			.order('created_at', { ascending: false });
-		if (!error && d) {
-			trackingData = d;
-		}
-		isLoading = false;
-	}
 
 	function openNew() {
 		currentEntry = null;
@@ -213,7 +197,7 @@
 			showAlert(error.message, 'Error');
 		} else {
 			showAlert('Entry deleted successfully', 'Success');
-			fetchData();
+			dataStore.deleteDailyEntry(id);
 		}
 	}
 
@@ -221,25 +205,27 @@
 		if (currentEntry) {
 			// Update
 			const { id, ...updates } = entry;
-			const { error } = await supabase
+			const { data, error } = await supabase
 				.from('dailyTracking')
 				.update(updates)
-				.eq('id', currentEntry.id);
+				.eq('id', currentEntry.id)
+				.select()
+				.single();
 
 			if (error) showAlert(error.message, 'Error');
 			else {
 				showAlert('Entry updated successfully', 'Success');
 				isModalOpen = false;
-				fetchData();
+				if (data) dataStore.updateDailyEntry(data);
 			}
 		} else {
 			// Create
-			const { error } = await supabase.from('dailyTracking').insert(entry);
+			const { data, error } = await supabase.from('dailyTracking').insert(entry).select().single();
 			if (error) showAlert(error.message, 'Error');
 			else {
 				showAlert('Entry created successfully', 'Success');
 				isModalOpen = false;
-				fetchData();
+				if (data) dataStore.addDailyEntry(data);
 			}
 		}
 	}
@@ -284,11 +270,9 @@
 		{/if}
 	</div>
 
-	{#if isLoading}
-		<div class="flex h-64 items-center justify-center">
-			<Loader class="h-8 w-8 animate-spin" style="color: {settings.getAccentHex()}" />
-		</div>
-	{:else if session}
+	{#if !session}
+		<p class="text-center text-zinc-500">Please sign in to view tracking data.</p>
+	{:else}
 		<!-- Controls -->
 		<div class="mb-4 flex flex-wrap items-center justify-between gap-4 text-sm">
 			<div class="flex flex-wrap items-center gap-4">
@@ -569,8 +553,6 @@
 				{/each}
 			</div>
 		{/if}
-	{:else}
-		<p class="text-center text-zinc-500">Please sign in to view tracking data.</p>
 	{/if}
 
 	<EntryModal

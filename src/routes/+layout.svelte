@@ -6,11 +6,12 @@
 	import { page } from '$app/stores';
 	import type { Session } from '@supabase/supabase-js';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { dataStore } from '$lib/dataStore.svelte';
 	import { App } from '@capacitor/app';
 	import { Capacitor } from '@capacitor/core';
 	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
-	import { Loader } from 'lucide-svelte';
+	import { LoaderCircle } from 'lucide-svelte';
 	import AlertModal from '$lib/components/AlertModal.svelte';
 	import Navbar from '$lib/components/Navbar.svelte';
 
@@ -32,17 +33,21 @@
 		if (typeof document !== 'undefined' && Capacitor.getPlatform() === 'android') {
 			document.documentElement.style.setProperty('--status-bar-height', '24px');
 		}
-		supabase.auth.getSession().then(({ data: { session: s } }) => {
+		supabase.auth.getSession().then(async ({ data: { session: s } }) => {
 			session = s;
-			if (s) settings.init();
+			if (s) {
+				await Promise.all([settings.init(), dataStore.init()]);
+			}
 			authChecked = true;
 		});
 
 		const {
 			data: { subscription }
-		} = supabase.auth.onAuthStateChange((_event, _session) => {
+		} = supabase.auth.onAuthStateChange(async (_event, _session) => {
 			session = _session;
-			if (_session) settings.init();
+			if (_session) {
+				await Promise.all([settings.init(), dataStore.init()]);
+			}
 		});
 
 		// Handle Deep Links for Native Auth (custom scheme com.cgtracker.app://auth/callback)
@@ -107,8 +112,8 @@
 		out:fade={{ duration: 300 }}
 	>
 		<div class="flex flex-col items-center gap-4">
-			<Loader class="h-10 w-10 animate-spin" style="color: {settings.getAccentHex()}" />
-			<span class="text-sm text-zinc-400">Loading...</span>
+			<LoaderCircle class="h-10 w-10 animate-spin" style="color: {settings.getAccentHex()}" />
+			<span class="text-sm text-zinc-400">Loading data...</span>
 		</div>
 	</div>
 {:else}

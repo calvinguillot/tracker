@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import {
-		Loader,
+		LoaderCircle,
 		Plus,
 		ArrowUp,
 		ArrowDown,
@@ -13,6 +13,7 @@
 		Link as LinkIcon
 	} from 'lucide-svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { dataStore } from '$lib/dataStore.svelte';
 	import ProjectModal from '$lib/components/ProjectModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 
@@ -41,8 +42,7 @@
 	};
 
 	let session = $state<Session | null>(null);
-	let isLoading = $state(true);
-	let projects = $state<Project[]>([]);
+	let projects = $derived(dataStore.projects);
 	let isModalOpen = $state(false);
 	let currentEntry = $state<Project | null>(null);
 	let viewMode = $state<'list' | 'gantt'>('list');
@@ -163,36 +163,16 @@
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
-			if (s) fetchData();
-			else isLoading = false;
 		});
 
 		const {
 			data: { subscription }
 		} = supabase.auth.onAuthStateChange((_event, _session) => {
 			session = _session;
-			if (_session) fetchData();
-			else isLoading = false;
 		});
 
 		return () => subscription.unsubscribe();
 	});
-
-	async function fetchData() {
-		isLoading = true;
-		const { data: d, error } = await supabase
-			.from('projects')
-			.select('*')
-			.order('created_at', { ascending: false });
-
-		if (!error && d) {
-			projects = d;
-		} else if (error) {
-			console.error('Error fetching projects:', error);
-		}
-
-		isLoading = false;
-	}
 
 	function openNew() {
 		currentEntry = null;
@@ -220,7 +200,7 @@
 			showAlert('Error deleting: ' + error.message, 'Error');
 		} else {
 			showAlert('Project deleted successfully!', 'Success');
-			fetchData();
+			dataStore.deleteProject(id);
 		}
 	}
 
@@ -241,7 +221,7 @@
 		} else {
 			showAlert('Project deleted successfully!', 'Success');
 			isModalOpen = false;
-			fetchData();
+			dataStore.deleteProject(id);
 		}
 	}
 
@@ -253,7 +233,12 @@
 
 		if (currentEntry) {
 			// Update
-			const { error } = await supabase.from('projects').update(payload).eq('id', currentEntry.id);
+			const { data, error } = await supabase
+				.from('projects')
+				.update(payload)
+				.eq('id', currentEntry.id)
+				.select()
+				.single();
 
 			if (error) {
 				console.error('Error updating project:', error);
@@ -261,11 +246,11 @@
 			} else {
 				showAlert('Project updated successfully!', 'Success');
 				isModalOpen = false;
-				fetchData();
+				if (data) dataStore.updateProject(data);
 			}
 		} else {
 			// Insert
-			const { error } = await supabase.from('projects').insert(payload);
+			const { data, error } = await supabase.from('projects').insert(payload).select().single();
 
 			if (error) {
 				console.error('Error saving project:', error);
@@ -273,7 +258,7 @@
 			} else {
 				showAlert('Project saved successfully!', 'Success');
 				isModalOpen = false;
-				fetchData();
+				if (data) dataStore.addProject(data);
 			}
 		}
 	}
@@ -324,11 +309,7 @@
 		{/if}
 	</div>
 
-	{#if isLoading && session !== null}
-		<div class="flex h-48 items-center justify-center">
-			<Loader class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
-		</div>
-	{:else if !session}
+	{#if !session}
 		<div class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6 text-zinc-400">
 			Sign in to view projects.
 		</div>

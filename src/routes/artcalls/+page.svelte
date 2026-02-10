@@ -2,10 +2,11 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Loader, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
+	import { LoaderCircle, Plus, ArrowUp, ArrowDown } from 'lucide-svelte';
 	import ArtCallModal from '$lib/components/ArtCallModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { dataStore } from '$lib/dataStore.svelte';
 
 	type ArtCall = {
 		id: number;
@@ -22,8 +23,7 @@
 	};
 
 	let session = $state<Session | null>(null);
-	let isLoading = $state(true);
-	let artCalls = $state<ArtCall[]>([]);
+	let artCalls = $derived(dataStore.artCalls);
 	let isModalOpen = $state(false);
 	let currentEntry = $state<ArtCall | null>(null);
 	let appliedCount = $derived(artCalls.filter((call) => call.applied).length);
@@ -79,37 +79,16 @@
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
-			if (s) fetchData();
-			else isLoading = false;
 		});
 
 		const {
 			data: { subscription }
 		} = supabase.auth.onAuthStateChange((_event, _session) => {
 			session = _session;
-			if (_session) fetchData();
-			else isLoading = false;
 		});
 
 		return () => subscription.unsubscribe();
 	});
-
-	async function fetchData() {
-		isLoading = true;
-		console.log('Fetching art calls...');
-		const { data: d, error } = await supabase
-			.from('artCalls')
-			.select('id, created_at, name, location, type, funds, deadline, link, applied, group, idea')
-			.order('deadline', { ascending: true });
-
-		if (!error && d) {
-			artCalls = d;
-		} else if (error) {
-			console.error('Error fetching art calls:', error);
-		}
-
-		isLoading = false;
-	}
 
 	function openNew() {
 		currentEntry = null;
@@ -137,7 +116,7 @@
 			showAlert('Error deleting: ' + error.message, 'Error');
 		} else {
 			showAlert('Art call deleted successfully!', 'Success');
-			fetchData();
+			dataStore.deleteArtCall(id);
 		}
 	}
 
@@ -158,7 +137,7 @@
 		} else {
 			showAlert('Art call deleted successfully!', 'Success');
 			isModalOpen = false;
-			fetchData();
+			dataStore.deleteArtCall(id);
 		}
 	}
 
@@ -170,7 +149,12 @@
 
 		if (currentEntry) {
 			// Update
-			const { error } = await supabase.from('artCalls').update(payload).eq('id', currentEntry.id);
+			const { data, error } = await supabase
+				.from('artCalls')
+				.update(payload)
+				.eq('id', currentEntry.id)
+				.select()
+				.single();
 
 			if (error) {
 				console.error('Error updating art call:', error);
@@ -178,11 +162,11 @@
 			} else {
 				showAlert('Art call updated successfully!', 'Success');
 				isModalOpen = false;
-				fetchData();
+				if (data) dataStore.updateArtCall(data);
 			}
 		} else {
 			// Insert
-			const { error } = await supabase.from('artCalls').insert(payload);
+			const { data, error } = await supabase.from('artCalls').insert(payload).select().single();
 
 			if (error) {
 				console.error('Error saving art call:', error);
@@ -190,7 +174,7 @@
 			} else {
 				showAlert('Art call saved successfully!', 'Success');
 				isModalOpen = false;
-				fetchData();
+				if (data) dataStore.addArtCall(data);
 			}
 		}
 	}
@@ -264,11 +248,7 @@
 		{/if}
 	</div>
 
-	{#if isLoading && session !== null}
-		<div class="flex h-48 items-center justify-center">
-			<Loader class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
-		</div>
-	{:else if !session}
+	{#if !session}
 		<div class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6 text-zinc-400">
 			Sign in to view art calls.
 		</div>

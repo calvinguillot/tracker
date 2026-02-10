@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { supabase } from '$lib/supabaseClient';
-	import { Eye, Loader } from 'lucide-svelte';
+	import { Eye, LoaderCircle } from 'lucide-svelte';
 	import { settings } from '$lib/settingsStore.svelte';
 
 	let { entry, onView } = $props();
@@ -37,7 +37,7 @@
 	{#if entry.image}
 		{#if isImageLoading}
 			<div class="absolute inset-0 z-10 flex items-center justify-center bg-zinc-900">
-				<Loader class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
+				<LoaderCircle class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
 			</div>
 		{/if}
 
