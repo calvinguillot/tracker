@@ -134,7 +134,7 @@
 					/>
 				</div>
 
-				<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+				<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
 					<!-- Type -->
 					<div>
 						<label for="type" class="mb-1 block text-sm font-medium text-zinc-400">Type</label>
@@ -148,6 +148,19 @@
 								<option value={type.id}>{type.label}</option>
 							{/each}
 						</select>
+					</div>
+
+					<!-- Group Toggle -->
+					<div class="flex items-end pb-2">
+						<div class="flex items-center">
+							<input
+								type="checkbox"
+								id="group"
+								bind:checked={formData.group}
+								class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-yellow-500 focus:ring-yellow-500"
+							/>
+							<label for="group" class="ml-2 block text-sm font-medium text-zinc-300">Group</label>
+							</div>
 					</div>
 
 					<!-- Funds -->
@@ -196,31 +209,6 @@
 						rows="3"
 						class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 					></textarea>
-				</div>
-
-				<div class="flex gap-6">
-					<!-- Applied Toggle -->
-					<div class="flex items-center">
-						<input
-							type="checkbox"
-							id="applied"
-							bind:checked={formData.applied}
-							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500"
-						/>
-						<label for="applied" class="ml-2 block text-sm font-medium text-zinc-300">Applied</label
-						>
-					</div>
-
-					<!-- Group Toggle -->
-					<div class="flex items-center">
-						<input
-							type="checkbox"
-							id="group"
-							bind:checked={formData.group}
-							class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-yellow-500 focus:ring-yellow-500"
-						/>
-						<label for="group" class="ml-2 block text-sm font-medium text-zinc-300">Group</label>
-					</div>
 				</div>
 
 				<div
