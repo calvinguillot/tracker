@@ -50,35 +50,35 @@
 	let completedProjectsCount = $derived(dataStore.projects.filter((p) => p.status === 3).length);
 	let completedTasksCount = $derived(dataStore.tasks.filter((t) => t.status === 'done').length);
 
-	// Today's deadlines
+	// Today's deadlines - use Date comparison for correct timezone handling
 	let todayTasks = $derived.by(() => {
 		const today = new Date();
-		const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-		const start = todayStr + 'T00:00:00';
-		const end = todayStr + 'T23:59:59';
+		const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+		const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
 		return dataStore.tasks
 			.filter((t) => {
 				if (t.status === 'done') return false;
 				if (!t.deadline_at) return false;
-				return t.deadline_at >= start && t.deadline_at <= end;
+				const d = new Date(t.deadline_at);
+				return d >= startOfDay && d <= endOfDay;
 			})
-			.sort((a, b) => a.deadline_at.localeCompare(b.deadline_at));
+			.sort((a, b) => (a.deadline_at ?? '').localeCompare(b.deadline_at ?? ''));
 	});
 
 	let todayArtCalls = $derived.by(() => {
 		const today = new Date();
-		const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-		const start = todayStr + 'T00:00:00';
-		const end = todayStr + 'T23:59:59';
+		const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+		const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
 		return dataStore.artCalls
 			.filter((a) => {
 				if (a.applied) return false;
 				if (!a.deadline) return false;
-				return a.deadline >= start && a.deadline <= end;
+				const d = new Date(a.deadline);
+				return d >= startOfDay && d <= endOfDay;
 			})
-			.sort((a, b) => a.deadline.localeCompare(b.deadline));
+			.sort((a, b) => (a.deadline ?? '').localeCompare(b.deadline ?? ''));
 	});
 
 	// Combined and sorted deadlines for today
@@ -482,39 +482,40 @@
 							<div
 								class="absolute top-4 left-1/2 z-10 -translate-x-1/2 text-sm font-semibold text-zinc-300"
 							>
-								{filteredData.length} Entries
+								Progress
 							</div>
 							<LayerCake
-								padding={{ top: 20, right: 10, bottom: 20, left: 25 }}
+								padding={{ top: 36, right: 15, bottom: 32, left: 30 }}
 								x="created_at"
-								y="value"
+								y="mood"
 								{yDomain}
 								xScale={scaleTime()}
 								data={filteredData}
 							>
-								<Html>
+								<Svg>
 									<AxisX
 										gridlines={false}
 										ticks={filteredData.length > 10 ? 5 : filteredData.length}
-										formatTick={formatTime}
+										format={formatTime}
 										tickMarks={true}
+										dy={12}
 									/>
 									<AxisY gridlines={true} ticks={5} tickMarks={true} />
-								</Html>
-								<Svg>
 									{#each Object.entries(activeMetrics) as [key, config]}
 										{#if config.active}
-											<Line
-												stroke={config.color}
-												y={(d: any) => d[key] ?? 0}
-												width={2}
-												curve={false}
-											/>
+											<Line stroke={config.color} yAccessorKey={key} />
 										{/if}
 									{/each}
 								</Svg>
 								<Html>
-									<SharedTooltip dataset={filteredData} formatTitle={formatTime} {activeMetrics} />
+									<SharedTooltip
+									labels={Object.fromEntries(
+										Object.entries(activeMetrics)
+											.filter(([k, v]) => v.active)
+											.map(([k, v]) => [k, { text: v.label, color: v.color }])
+									)}
+									formatTitle={formatTime}
+								/>
 								</Html>
 							</LayerCake>
 						</div>
@@ -563,12 +564,11 @@
 					</div>
 				{/if}
 
-				<!-- Today's Tasks + Done - 1/4 width on desktop, second on mobile -->
-				{#if filteredData.length > 0}
-					<div class="order-2 space-y-3 lg:order-3 lg:col-span-1">
-						<!-- Today's Tasks Section -->
-						<h2 class="text-lg font-semibold text-zinc-100">Today's Tasks</h2>
-						{#if todayDeadlines.length === 0}
+				<!-- Today's Tasks + Done - 1/4 width on desktop, second on mobile (always show when logged in) -->
+				<div class="order-2 space-y-3 lg:order-3 lg:col-span-1">
+					<!-- Today's Tasks Section -->
+					<h2 class="text-lg font-semibold text-zinc-100">Today's Tasks</h2>
+					{#if todayDeadlines.length === 0}
 							<div class="rounded-lg bg-zinc-900/60 px-3 py-4 text-center text-sm text-zinc-500">
 								No deadlines for today
 							</div>
@@ -680,7 +680,6 @@
 							</div>
 						</div>
 					</div>
-				{/if}
 			</div>
 		</div>
 	{:else}

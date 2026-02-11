@@ -8,11 +8,25 @@ class DataStore {
     artCalls = $state<any[]>([]);
     
     isLoading = $state(true);
+    isInitialized = $state(false);
     private initPromise: Promise<void> | null = null;
 
     constructor() { }
 
+    reset() {
+        this.tasks = [];
+        this.dailyTracking = [];
+        this.projects = [];
+        this.notes = [];
+        this.artCalls = [];
+        this.isLoading = true;
+        this.isInitialized = false;
+        this.initPromise = null;
+    }
+
     async init() {
+        if (this.isInitialized) return;
+        
         if (this.initPromise) {
             return this.initPromise;
         }
@@ -58,6 +72,7 @@ class DataStore {
         if (artCallsError) console.error('Error fetching artCalls:', artCallsError);
 
         this.isLoading = false;
+        this.isInitialized = true;
     }
 
     // TASKS Methods

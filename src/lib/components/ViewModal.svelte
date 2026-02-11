@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { supabase } from '$lib/supabaseClient';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { getCachedUrl, setCachedUrl } from '$lib/imageUrlCache';
 	import { fade } from 'svelte/transition';
 
 	let { isOpen, entry, onClose } = $props();
@@ -8,6 +9,11 @@
 
 	$effect(() => {
 		if (isOpen && entry?.image) {
+			const cached = getCachedUrl(entry.image);
+			if (cached) {
+				imageUrl = cached;
+				return;
+			}
 			getSignedUrl(entry.image);
 		} else {
 			imageUrl = null;
@@ -15,9 +21,9 @@
 	});
 
 	async function getSignedUrl(path: string) {
-		const { data, error } = await supabase.storage.from('dailyPicture').createSignedUrl(path, 3600); // 1 hour
-
+		const { data } = await supabase.storage.from('dailyPicture').createSignedUrl(path, 3600);
 		if (data) {
+			setCachedUrl(path, data.signedUrl);
 			imageUrl = data.signedUrl;
 		}
 	}

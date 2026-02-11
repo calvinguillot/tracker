@@ -22,6 +22,7 @@
 
 	let { data } = $props();
 	let trackingData = $derived(dataStore.dailyTracking);
+	let isLoading = $derived(dataStore.isLoading);
 	let isModalOpen = $state(false);
 	let isViewModalOpen = $state(false);
 	let currentEntry = $state<any>(null);
@@ -272,6 +273,10 @@
 
 	{#if !session}
 		<p class="text-center text-zinc-500">Please sign in to view tracking data.</p>
+	{:else if isLoading}
+		<div class="flex flex-1 items-center justify-center p-8">
+			<LoaderCircle class="h-8 w-8 animate-spin text-zinc-400" />
+		</div>
 	{:else}
 		<!-- Controls -->
 		<div class="mb-4 flex flex-wrap items-center justify-between gap-4 text-sm">

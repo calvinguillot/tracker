@@ -65,12 +65,23 @@ const defaultSettings: GlobalSettings = {
 class SettingsStore {
 	settings = $state<GlobalSettings>(defaultSettings);
 	isLoading = $state(true);
+	isInitialized = $state(false);
 	private initPromise: Promise<void> | null = null;
 
 	constructor() { }
 
+	reset() {
+		// Deep copy default settings to avoid reference issues
+		this.settings = JSON.parse(JSON.stringify(defaultSettings));
+		this.isLoading = true;
+		this.isInitialized = false;
+		this.initPromise = null;
+	}
+
 	async init() {
 		// Prevent multiple concurrent init calls
+		if (this.isInitialized) return;
+		
 		if (this.initPromise) {
 			return this.initPromise;
 		}
@@ -110,6 +121,7 @@ class SettingsStore {
 		}
 
 		this.isLoading = false;
+		this.isInitialized = true;
 	}
 
 	async saveSettings() {

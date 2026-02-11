@@ -2,32 +2,41 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { Eye, LoaderCircle } from 'lucide-svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { getCachedUrl, setCachedUrl } from '$lib/imageUrlCache';
 
 	let { entry, onView } = $props();
 	let imageUrl = $state<string | null>(null);
-	let isImageLoading = $state(!!entry?.image);
+	let imageLoaded = $state(false);
+
+	let isImageLoading = $derived(!!entry?.image && !imageLoaded);
 
 	$effect(() => {
 		if (entry?.image) {
-			isImageLoading = true;
+			const cached = getCachedUrl(entry.image);
+			if (cached) {
+				imageUrl = cached;
+				// imageLoaded stays false until img onload fires
+				return;
+			}
+			imageLoaded = false;
 			getSignedUrl(entry.image);
 		} else {
 			imageUrl = null;
-			isImageLoading = false;
+			imageLoaded = false;
 		}
 	});
 
 	async function getSignedUrl(path: string) {
 		const { data, error } = await supabase.storage.from('dailyPicture').createSignedUrl(path, 3600);
 		if (data) {
+			setCachedUrl(path, data.signedUrl);
 			imageUrl = data.signedUrl;
-		} else {
-			isImageLoading = false;
 		}
+		isImageLoading = false;
 	}
 
 	function handleImageLoad() {
-		isImageLoading = false;
+		imageLoaded = true;
 	}
 </script>
 

@@ -36,7 +36,9 @@
 		supabase.auth.getSession().then(async ({ data: { session: s } }) => {
 			session = s;
 			if (s) {
-				await Promise.all([settings.init(), dataStore.init()]);
+				// Initialize data in background without blocking UI
+				settings.init();
+				dataStore.init();
 			}
 			authChecked = true;
 		});
@@ -46,7 +48,13 @@
 		} = supabase.auth.onAuthStateChange(async (_event, _session) => {
 			session = _session;
 			if (_session) {
-				await Promise.all([settings.init(), dataStore.init()]);
+				// Stores now handle their own initialization state to prevent redundant fetches
+				settings.init();
+				dataStore.init();
+			} else {
+				// Clear data on sign out
+				settings.reset();
+				dataStore.reset();
 			}
 		});
 
