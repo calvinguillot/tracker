@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
 	import {
-		Loader,
+		LoaderCircle,
 		Plus,
 		ArrowUp,
 		ArrowDown,
@@ -22,6 +22,7 @@
 	import TaskModal from '$lib/components/TaskModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import { dataStore } from '$lib/dataStore.svelte';
 
 	type Task = {
 		id: number;
@@ -38,8 +39,7 @@
 	};
 
 	let session = $state<Session | null>(null);
-	let isLoading = $state(true);
-	let tasks = $state<Task[]>([]);
+	let tasks = $derived(dataStore.tasks);
 	let isModalOpen = $state(false);
 	let currentEntry = $state<Task | null>(null);
 	let viewMode = $state<'list' | 'week'>('list');
@@ -221,7 +221,7 @@
 		const newDeadlineIso = newDeadline.toISOString();
 
 		// Optimistic update
-		tasks = tasks.map((t) => (t.id === draggingTaskId ? { ...t, deadline_at: newDeadlineIso } : t));
+		dataStore.updateTask({ ...task, deadline_at: newDeadlineIso });
 
 		// Persist to database
 		const { error } = await supabase
@@ -233,7 +233,7 @@
 			console.error('Error updating task deadline:', error);
 			showAlert('Error updating deadline: ' + error.message, 'Error');
 			// Revert on error
-			fetchData();
+			dataStore.updateTask(task); // Revert to old task state (which has old deadline)
 		}
 
 		draggingTaskId = null;
@@ -242,37 +242,16 @@
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
-			if (s) fetchData();
-			else isLoading = false;
 		});
 
 		const {
 			data: { subscription }
 		} = supabase.auth.onAuthStateChange((_event, _session) => {
 			session = _session;
-			if (_session) fetchData();
-			else isLoading = false;
 		});
 
 		return () => subscription.unsubscribe();
 	});
-
-	async function fetchData() {
-		isLoading = true;
-		console.log('Fetching tasks...');
-		const { data: d, error } = await supabase
-			.from('tasks')
-			.select('*')
-			.order('deadline_at', { ascending: true });
-
-		if (!error && d) {
-			tasks = d;
-		} else if (error) {
-			console.error('Error fetching tasks:', error);
-		}
-
-		isLoading = false;
-	}
 
 	function openNew() {
 		currentEntry = null;
@@ -300,7 +279,7 @@
 			showAlert('Error deleting: ' + error.message, 'Error');
 		} else {
 			showAlert('Task deleted successfully!', 'Success');
-			fetchData();
+			dataStore.deleteTask(id);
 		}
 	}
 
@@ -321,7 +300,7 @@
 		} else {
 			showAlert('Task deleted successfully!', 'Success');
 			isModalOpen = false;
-			fetchData();
+			dataStore.deleteTask(id);
 		}
 	}
 
@@ -330,7 +309,12 @@
 
 		if (currentEntry) {
 			// Update
-			const { error } = await supabase.from('tasks').update(payload).eq('id', currentEntry.id);
+			const { data, error } = await supabase
+				.from('tasks')
+				.update(payload)
+				.eq('id', currentEntry.id)
+				.select()
+				.single();
 
 			if (error) {
 				console.error('Error updating task:', error);
@@ -338,11 +322,11 @@
 			} else {
 				showAlert('Task updated successfully!', 'Success');
 				isModalOpen = false;
-				fetchData();
+				if (data) dataStore.updateTask(data);
 			}
 		} else {
 			// Insert
-			const { error } = await supabase.from('tasks').insert(payload);
+			const { data, error } = await supabase.from('tasks').insert(payload).select().single();
 
 			if (error) {
 				console.error('Error saving task:', error);
@@ -350,7 +334,7 @@
 			} else {
 				showAlert('Task saved successfully!', 'Success');
 				isModalOpen = false;
-				fetchData();
+				if (data) dataStore.addTask(data);
 			}
 		}
 	}
@@ -364,9 +348,7 @@
 		}
 
 		// Optimistic update - modify local state immediately
-		tasks = tasks.map((t) =>
-			t.id === task.id ? { ...t, status: newStatus, completed_at: payload.completed_at } : t
-		);
+		dataStore.updateTask({ ...task, status: newStatus, completed_at: payload.completed_at });
 
 		const { error } = await supabase.from('tasks').update(payload).eq('id', task.id);
 
@@ -374,7 +356,7 @@
 			console.error('Error updating task status:', error);
 			showAlert('Error updating status: ' + error.message, 'Error');
 			// Revert on error
-			fetchData();
+			dataStore.updateTask(task);
 		}
 	}
 
@@ -484,11 +466,7 @@
 		{/if}
 	</div>
 
-	{#if isLoading && session !== null}
-		<div class="flex h-48 items-center justify-center">
-			<Loader class="h-6 w-6 animate-spin" style="color: {settings.getAccentHex()}" />
-		</div>
-	{:else if !session}
+	{#if !session}
 		<div class="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6 text-zinc-400">
 			Sign in to view tasks.
 		</div>

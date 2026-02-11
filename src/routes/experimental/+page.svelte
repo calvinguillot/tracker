@@ -4,6 +4,7 @@
 	import type { Session } from '@supabase/supabase-js';
 	import { Canvas } from '@threlte/core';
 	import ExperimentalScene from '$lib/components/ExperimentalScene.svelte';
+	import { dataStore } from '$lib/dataStore.svelte';
 
 	const MIN_SIZE = 100;
 
@@ -32,7 +33,7 @@
 	});
 
 	// Data for orbiting icons (grouped by activity type)
-	let rawData = $state<any[]>([]);
+	let rawData = $derived(dataStore.dailyTracking);
 
 	let parsedData = $derived(
 		rawData
@@ -114,14 +115,12 @@
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
-			if (s) fetchData();
 		});
 
 		const {
 			data: { subscription }
 		} = supabase.auth.onAuthStateChange((_event, _session) => {
 			session = _session;
-			if (_session) fetchData();
 		});
 
 		// Defer Canvas until container has real size; use explicit pixel size so WebGL viewport matches from frame 1
@@ -140,21 +139,6 @@
 
 		return () => subscription.unsubscribe();
 	});
-
-	async function fetchData() {
-		const { data: d, error } = await supabase
-			.from('dailyTracking')
-			.select(
-				'created_at, mood, exercise_type, ihana, calvin_day, sickness, work_type, study_type, culture_type, art_type, music_type, leisure_type, call_family, cry, loving, friends'
-			)
-			.order('created_at', { ascending: true });
-
-		if (!error && d) {
-			rawData = d;
-		} else if (error) {
-			console.error('Error fetching data:', error);
-		}
-	}
 
 	// Latest entry by date (most recent) for mood-based model
 	let latestMood = $derived.by(() => {
@@ -178,7 +162,7 @@
 				<Canvas>
 					<ExperimentalScene
 						{iconGroups}
-						latestMood={latestMood}
+						{latestMood}
 						onModelLoaded={() => (modelLoaded = true)}
 						onModelError={() => (modelLoaded = true)}
 					/>
@@ -217,7 +201,7 @@
 		overflow: hidden;
 	}
 
-	/* Ensure Threlte canvas wrapper and canvas fill the wrapper so WebGL viewport matches */
+	/* Ensure Threlte canvas wrapper and canvas fill the wrapper so WebGL viewport matches from frame 1 */
 	:global(.canvas-wrapper > div),
 	:global(.canvas-wrapper canvas) {
 		width: 100%;
