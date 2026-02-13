@@ -25,6 +25,7 @@
 		type: string | null;
 		color: string | null;
 		deadline_at: string;
+		time_of_day: string | null;
 	};
 
 	type TodayArtCall = {
@@ -63,7 +64,14 @@
 				const d = new Date(t.deadline_at);
 				return d >= startOfDay && d <= endOfDay;
 			})
-			.sort((a, b) => (a.deadline_at ?? '').localeCompare(b.deadline_at ?? ''));
+			.sort((a, b) => {
+				const timeA = a.time_of_day || '';
+				const timeB = b.time_of_day || '';
+				if (timeA && timeB) return timeA.localeCompare(timeB);
+				if (timeA) return -1;
+				if (timeB) return 1;
+				return (a.title || '').localeCompare(b.title || '');
+			});
 	});
 
 	let todayArtCalls = $derived.by(() => {
@@ -581,28 +589,35 @@
 										<div
 											class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
 										>
-											<div class="flex items-center gap-2.5">
-												<SquareCheckBig class="h-4 w-4 text-indigo-400" />
-												<div class="min-w-0 flex-1">
-													<div
-														class="truncate text-sm font-medium text-zinc-100"
-														title={task.title}
-													>
-														{task.title}
-													</div>
-													<div class="flex items-center gap-2 text-xs">
-														<span
-															class={`rounded-full px-1.5 py-0.5 ${statusStyle.bg} ${statusStyle.text}`}
+											<div class="flex items-center justify-between gap-2.5">
+												<div class="flex min-w-0 flex-1 items-center gap-2.5">
+													<SquareCheckBig class="h-4 w-4 shrink-0 text-indigo-400" />
+													<div class="min-w-0 flex-1">
+														<div
+															class="truncate text-sm font-medium text-zinc-100"
+															title={task.title}
 														>
-															{getStatusLabel(task.status)}
-														</span>
-														{#if task.type}
-															<span class="text-zinc-500"
-																>{settings.getTaskType(task.type)?.label ?? task.type}</span
+															{task.title}
+														</div>
+														<div class="flex items-center gap-2 text-xs">
+															<span
+																class={`rounded-full px-1.5 py-0.5 ${statusStyle.bg} ${statusStyle.text}`}
 															>
-														{/if}
+																{getStatusLabel(task.status)}
+															</span>
+															{#if task.type}
+																<span class="text-zinc-500"
+																	>{settings.getTaskType(task.type)?.label ?? task.type}</span
+																>
+															{/if}
+														</div>
 													</div>
 												</div>
+												{#if task.time_of_day}
+													<span class="shrink-0 text-xs text-zinc-500">
+														{task.time_of_day.slice(0, 5)}
+													</span>
+												{/if}
 											</div>
 										</div>
 									{:else}

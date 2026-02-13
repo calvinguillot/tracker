@@ -2,12 +2,13 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { LoaderCircle, Plus, ArrowUp, ArrowDown, List, Globe } from 'lucide-svelte';
+	import { LoaderCircle, ArrowUp, ArrowDown, List, Globe } from 'lucide-svelte';
 	import { flip } from 'svelte/animate';
 	import { fade } from 'svelte/transition';
 	import ArtCallModal from '$lib/components/ArtCallModal.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
+	import FloatingActionButton from '$lib/components/FloatingActionButton.svelte';
 	import { dataStore } from '$lib/dataStore.svelte';
 	import {
 		MapLibre,
@@ -371,16 +372,11 @@
 
 <section>
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		{#if session && !isModalOpen && !alertState.isOpen}
-			<button
-				onclick={openNew}
-				class="fixed right-8 bottom-24 z-50 rounded-full p-4 shadow-lg/30 drop-shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110 md:right-16 md:bottom-16"
-				style="--accent-color: {settings.getAccentLightHex()}; background-color: {settings.getAccentHex()}/50"
-				aria-label="New Art Call"
-			>
-				<Plus class="h-6 w-6 text-(--accent-color)" />
-			</button>
-		{/if}
+		<FloatingActionButton
+			onclick={openNew}
+			visible={!!(session && !isModalOpen && !alertState.isOpen)}
+			ariaLabel="New Art Call"
+		/>
 	</div>
 
 	{#if !session}
@@ -625,7 +621,7 @@
 				</div>
 			{/snippet}
 
-			<div class="grid grid-cols-1 gap-3">
+			<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
 				{#each activeCalls as call (call.id)}
 					<div animate:flip={{ duration: 300 }} transition:fade={{ duration: 200 }}>
 						{@render callCard(call)}
@@ -640,7 +636,7 @@
 					<div class="h-px flex-1 bg-zinc-800"></div>
 				</div>
 
-				<div class="grid grid-cols-1 gap-3">
+				<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
 					{#each archivedCalls as call (call.id)}
 						<div animate:flip={{ duration: 300 }} transition:fade={{ duration: 200 }}>
 							{@render callCard(call)}

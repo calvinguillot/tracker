@@ -4,7 +4,6 @@
 	import type { Session } from '@supabase/supabase-js';
 	import {
 		LoaderCircle,
-		Plus,
 		ArrowUp,
 		ArrowDown,
 		ListChecks,
@@ -20,6 +19,7 @@
 	import { flip } from 'svelte/animate';
 	import { fade, fly } from 'svelte/transition';
 	import TaskModal from '$lib/components/TaskModal.svelte';
+	import FloatingActionButton from '$lib/components/FloatingActionButton.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
 	import { dataStore } from '$lib/dataStore.svelte';
@@ -29,6 +29,7 @@
 		created_at: string;
 		completed_at: string | null;
 		deadline_at: string | null;
+		time_of_day: string | null;
 		status: string;
 		title: string;
 		type: string | null;
@@ -64,9 +65,10 @@
 	let sortedTasks = $derived(
 		[...filteredTasks].sort((a, b) => {
 			const modifier = sortDirection === 'asc' ? 1 : -1;
+			let primary = 0;
 
 			if (sortField === 'title') {
-				return (a.title || '').localeCompare(b.title || '') * modifier;
+				primary = (a.title || '').localeCompare(b.title || '') * modifier;
 			} else if (sortField === 'deadline') {
 				const dateA = a.deadline_at
 					? new Date(a.deadline_at).getTime()
@@ -78,26 +80,41 @@
 					: modifier === 1
 						? Infinity
 						: -Infinity;
-				return (dateA - dateB) * modifier;
+				primary = (dateA - dateB) * modifier;
 			} else if (sortField === 'completed') {
-				const dateA = a.completed_at ? new Date(a.completed_at).getTime() : 0; // treat null as oldest or newest?
+				const dateA = a.completed_at ? new Date(a.completed_at).getTime() : 0;
 				const dateB = b.completed_at ? new Date(b.completed_at).getTime() : 0;
-				return (dateA - dateB) * modifier;
+				primary = (dateA - dateB) * modifier;
 			} else if (sortField === 'created') {
 				const dateA = new Date(a.created_at).getTime();
 				const dateB = new Date(b.created_at).getTime();
-				return (dateA - dateB) * modifier;
+				primary = (dateA - dateB) * modifier;
 			} else if (sortField === 'status') {
-				// Simple string sort for status for now
-				return (a.status || '').localeCompare(b.status || '') * modifier;
+				primary = (a.status || '').localeCompare(b.status || '') * modifier;
 			}
-			return 0;
+
+			// Secondary sort by time_of_day when primary sort is equal
+			if (primary !== 0) return primary;
+			const timeA = a.time_of_day || '';
+			const timeB = b.time_of_day || '';
+			if (timeA && timeB) return timeA.localeCompare(timeB) * modifier;
+			if (timeA) return -1 * modifier;
+			if (timeB) return 1 * modifier;
+			return (a.title || '').localeCompare(b.title || '');
 		})
 	);
 
 	let activeTasks = $derived(sortedTasks.filter((t) => t.status !== 'done'));
 
 	let archivedTasks = $derived(sortedTasks.filter((t) => t.status === 'done'));
+
+	const todayStr = $derived(new Date().toDateString());
+	let activeTasksToday = $derived(
+		activeTasks.filter((t) => t.deadline_at && new Date(t.deadline_at).toDateString() === todayStr)
+	);
+	let activeTasksLater = $derived(
+		activeTasks.filter((t) => !t.deadline_at || new Date(t.deadline_at).toDateString() !== todayStr)
+	);
 
 	let completedCount = $derived(tasks.filter((t) => t.status === 'done').length);
 
@@ -148,7 +165,8 @@
 	}
 
 	function getTasksForDay(date: Date) {
-		return activeTasks.filter((t) => {
+		// Include both active and archived tasks for the day
+		const dayTasks = sortedTasks.filter((t) => {
 			if (!t.deadline_at) return false;
 			const d = new Date(t.deadline_at);
 			return (
@@ -156,6 +174,20 @@
 				d.getMonth() === date.getMonth() &&
 				d.getDate() === date.getDate()
 			);
+		});
+		// Sort: active first, then archived; within each group: by time, then alphabetically
+		return [...dayTasks].sort((a, b) => {
+			const archivedA = a.status === 'done';
+			const archivedB = b.status === 'done';
+			if (archivedA !== archivedB) return archivedA ? 1 : -1;
+			const hasTimeA = !!a.time_of_day;
+			const hasTimeB = !!b.time_of_day;
+			if (hasTimeA && hasTimeB) {
+				return (a.time_of_day || '').localeCompare(b.time_of_day || '');
+			}
+			if (hasTimeA) return -1;
+			if (hasTimeB) return 1;
+			return (a.title || '').localeCompare(b.title || '');
 		});
 	}
 
@@ -361,6 +393,8 @@
 	}
 
 	const formatDate = (value: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
+	// Format time from "HH:MM:SS" to "HH:mm" for display
+	const formatTime = (value: string | null) => (value ? value.slice(0, 5) : '');
 	function truncatePreview(text: string | null, max = maxCharDescriptionLength) {
 		if (!text) return '';
 		return text.length > max ? text.slice(0, max) + '...' : text;
@@ -454,16 +488,11 @@
 
 <section>
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		{#if session && !isModalOpen && !alertState.isOpen}
-			<button
-				onclick={openNew}
-				class="fixed right-8 bottom-24 z-50 rounded-full p-4 shadow-lg/30 drop-shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110 md:right-16 md:bottom-16"
-				style="--accent-color: {settings.getAccentLightHex()}; background-color: {settings.getAccentHex()}/50"
-				aria-label="New Task"
-			>
-				<Plus class="h-6 w-6 text-(--accent-color)" />
-			</button>
-		{/if}
+		<FloatingActionButton
+			onclick={openNew}
+			visible={!!(session && !isModalOpen && !alertState.isOpen)}
+			ariaLabel="New Task"
+		/>
 	</div>
 
 	{#if !session}
@@ -729,6 +758,8 @@
 									>
 									<span class={`text-xs ${archived ? 'text-zinc-500' : 'text-zinc-300'}`}>
 										{formatDate(task.deadline_at)}
+										{#if task.time_of_day}
+											at {formatTime(task.time_of_day)}{/if}
 									</span>
 								</div>
 								{#if task.completed_at}
@@ -747,13 +778,30 @@
 				</div>
 			{/snippet}
 
+			<!-- Today -->
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-				{#each activeTasks as task (task.id)}
+				{#each activeTasksToday as task (task.id)}
 					<div animate:flip={{ duration: 300 }} transition:fade={{ duration: 200 }}>
 						{@render taskCard(task, false)}
 					</div>
 				{/each}
 			</div>
+
+			{#if activeTasksLater.length > 0}
+				<div class="my-8 flex items-center gap-4">
+					<div class="h-px flex-1 bg-zinc-800"></div>
+					<span class="text-sm font-medium tracking-wider text-zinc-500 uppercase">Later</span>
+					<div class="h-px flex-1 bg-zinc-800"></div>
+				</div>
+
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+					{#each activeTasksLater as task (task.id)}
+						<div animate:flip={{ duration: 300 }} transition:fade={{ duration: 200 }}>
+							{@render taskCard(task, false)}
+						</div>
+					{/each}
+				</div>
+			{/if}
 
 			{#if archivedTasks.length > 0}
 				<div class="my-8 flex items-center gap-4">
@@ -777,6 +825,8 @@
 					{@const isToday = new Date().toDateString() === day.toDateString()}
 					{@const isDragOver = dragOverDate && dragOverDate.toDateString() === day.toDateString()}
 					<div
+						role="region"
+						aria-label={day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' drop zone'}
 						class={`flex min-h-[200px] flex-col gap-2 rounded-lg border p-2 transition-colors ${
 							isToday
 								? 'border-zinc-700 bg-zinc-900/40'
@@ -803,12 +853,15 @@
 						<div class="flex flex-1 flex-col gap-2">
 							{#each dayTasks as task}
 								{@const isDragging = draggingTaskId === task.id}
+								{@const isArchived = task.status === 'done'}
 								<button
 									draggable={true}
 									ondragstart={(e) => handleDragStart(e, task)}
-									class={`group flex flex-col gap-1 rounded border border-zinc-800 bg-zinc-900/60 p-2 text-left transition-all ${
-										isDragging ? 'cursor-grabbing opacity-50' : 'cursor-grab hover:bg-zinc-800/80'
-									}`}
+									class={`group flex flex-col gap-1 rounded border p-2 text-left transition-all ${
+										isArchived
+											? 'border-zinc-800/60 bg-zinc-900/30 text-zinc-500 hover:border-zinc-700/60 hover:bg-zinc-900/40'
+											: 'border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80'
+									} ${isDragging ? 'cursor-grabbing opacity-50' : 'cursor-grab'}`}
 									onclick={() => {
 										if (!isDragging) {
 											openEdit(task);
@@ -818,20 +871,28 @@
 									<div class="flex items-center gap-2">
 										{#if task.color}
 											<div
-												class={`h-2 w-2 shrink-0 rounded-full ${task.color.startsWith('bg-') ? task.color : ''}`}
+												class={`h-2 w-2 shrink-0 rounded-full ${isArchived ? 'opacity-50' : ''} ${task.color.startsWith('bg-') ? task.color : ''}`}
 												style={!task.color.startsWith('bg-')
 													? `background-color: ${task.color}`
 													: ''}
 											></div>
 										{/if}
-										<span class="truncate text-xs font-medium text-zinc-300" title={task.title}>
+										<span
+											class={`truncate text-xs font-medium ${isArchived ? 'text-zinc-500' : 'text-zinc-300'}`}
+											title={task.title}
+										>
 											{task.title}
 										</span>
 									</div>
-									<div class="flex items-center gap-2">
+									<div class="flex w-full items-center justify-between gap-2">
 										{#if task.type}
-											<span class="text-[10px] text-zinc-500 uppercase">
+											<span class={`text-[10px] uppercase ${isArchived ? 'text-zinc-600' : 'text-zinc-500'}`}>
 												{settings.getTaskType(task.type)?.label ?? task.type}
+											</span>
+										{/if}
+										{#if task.time_of_day}
+											<span class={`text-[10px] ${isArchived ? 'text-zinc-600' : 'text-zinc-500'}`}>
+												{formatTime(task.time_of_day)}
 											</span>
 										{/if}
 									</div>

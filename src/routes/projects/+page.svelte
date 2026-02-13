@@ -4,7 +4,6 @@
 	import type { Session } from '@supabase/supabase-js';
 	import {
 		LoaderCircle,
-		Plus,
 		ArrowUp,
 		ArrowDown,
 		List,
@@ -15,6 +14,7 @@
 	import { settings } from '$lib/settingsStore.svelte';
 	import { dataStore } from '$lib/dataStore.svelte';
 	import ProjectModal from '$lib/components/ProjectModal.svelte';
+	import FloatingActionButton from '$lib/components/FloatingActionButton.svelte';
 	import { showAlert, showConfirm, alertState } from '$lib/alertStore.svelte';
 
 	type Project = {
@@ -297,16 +297,11 @@
 
 <section>
 	<div class="flex flex-wrap items-center justify-between gap-4">
-		{#if session && !isModalOpen && !alertState.isOpen}
-			<button
-				onclick={openNew}
-				class="fixed right-8 bottom-24 z-50 rounded-full p-4 shadow-lg/30 drop-shadow-lg backdrop-blur-md transition-all hover:scale-105 hover:brightness-110 md:right-16 md:bottom-16"
-				style="--accent-color: {settings.getAccentLightHex()}; background-color: {settings.getAccentHex()}/50"
-				aria-label="New Project"
-			>
-				<Plus class="h-6 w-6 text-(--accent-color)" />
-			</button>
-		{/if}
+		<FloatingActionButton
+			onclick={openNew}
+			visible={!!(session && !isModalOpen && !alertState.isOpen)}
+			ariaLabel="New Project"
+		/>
 	</div>
 
 	{#if !session}
