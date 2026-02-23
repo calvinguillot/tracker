@@ -2,7 +2,7 @@
 	import { supabase } from '$lib/supabaseClient';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { LoaderCircle, ArrowUp, ArrowDown, List, Globe } from 'lucide-svelte';
+	import { LoaderCircle, ArrowUp, ArrowDown, List, Globe, Star, Search } from 'lucide-svelte';
 	import { flip } from 'svelte/animate';
 	import { fade } from 'svelte/transition';
 	import ArtCallModal from '$lib/components/ArtCallModal.svelte';
@@ -44,6 +44,7 @@
 		idea: string | null;
 		latitude?: number | null;
 		longitude?: number | null;
+		priority?: boolean;
 	};
 
 	let session = $state<Session | null>(null);
@@ -57,13 +58,29 @@
 	let mapRef = $state<maplibregl.Map | undefined>(undefined);
 	let hoveredFeatureId = $state<number | undefined>(undefined);
 
+	// Search state
+	let searchQuery = $state('');
+
 	// Sorting state
 	type SortField = 'name' | 'funds' | 'deadline' | 'created' | 'status';
 	let sortField = $state<SortField>('deadline');
 	let sortDirection = $state<'asc' | 'desc'>('asc');
 
+	let filteredArtCalls = $derived(() => {
+		if (!searchQuery.trim()) return artCalls;
+		const q = searchQuery.toLowerCase().trim();
+		return artCalls.filter((c) => {
+			const typeLabel = settings.getCallTypeLabel(c.type)?.toLowerCase() ?? '';
+			return (
+				c.name.toLowerCase().includes(q) ||
+				c.location.toLowerCase().includes(q) ||
+				typeLabel.includes(q)
+			);
+		});
+	});
+
 	let sortedArtCalls = $derived(
-		[...artCalls].sort((a, b) => {
+		[...filteredArtCalls()].sort((a, b) => {
 			const modifier = sortDirection === 'asc' ? 1 : -1;
 
 			if (sortField === 'name') {
@@ -389,34 +406,70 @@
 		</div>
 	{:else}
 		<!-- Sorting Controls + View Toggle -->
-		<div class="mb-4 flex flex-wrap items-center justify-between gap-4 text-sm">
-			<div class="flex items-center gap-2">
-				<select
-					bind:value={sortField}
-					class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
-				>
-					{#each ['name', 'funds', 'deadline', 'created', 'status'] as field}
-						<option value={field}>{field.charAt(0).toUpperCase() + field.slice(1)}</option>
-					{/each}
-				</select>
-				<button
-					class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
-					onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
-					aria-label="Toggle sort order"
-				>
-					{#if sortDirection === 'asc'}
-						<ArrowUp class="h-4 w-4" />
-					{:else}
-						<ArrowDown class="h-4 w-4" />
-					{/if}
-				</button>
+		<div class="mb-4 flex flex-col gap-4 text-sm md:flex-row md:flex-wrap md:items-center md:justify-between">
+			<!-- Mobile row 1: sort | applied. Mobile row 2: search. Desktop: sort+search | applied -->
+			<div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-4">
+				<div class="flex items-center justify-between md:justify-start">
+					<div class="flex items-center gap-2">
+						<select
+							bind:value={sortField}
+							class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
+						>
+							{#each ['name', 'funds', 'deadline', 'created', 'status'] as field}
+								<option value={field}>{field.charAt(0).toUpperCase() + field.slice(1)}</option>
+							{/each}
+						</select>
+						<button
+							class="flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 p-1.5 text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
+							onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
+							aria-label="Toggle sort order"
+						>
+							{#if sortDirection === 'asc'}
+								<ArrowUp class="h-4 w-4" />
+							{:else}
+								<ArrowDown class="h-4 w-4" />
+							{/if}
+						</button>
+					</div>
+					<div class="flex items-center gap-4 md:hidden">
+						<span class="text-xs text-zinc-500">
+							Applied {appliedCount} / {artCalls.length}
+						</span>
+						<div class="flex items-center rounded-lg bg-zinc-800/50 p-1">
+							<button
+								class={`rounded-md p-1.5 transition-all ${viewMode === 'list' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+								onclick={() => (viewMode = 'list')}
+								aria-label="List View"
+							>
+								<List class="h-4 w-4" />
+							</button>
+							<button
+								class={`rounded-md p-1.5 transition-all ${viewMode === 'map' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
+								onclick={() => (viewMode = 'map')}
+								aria-label="Map View"
+							>
+								<Globe class="h-4 w-4" />
+							</button>
+						</div>
+					</div>
+				</div>
+				<div class="relative w-full md:w-80">
+					<Search
+						class="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500"
+					/>
+					<input
+						type="text"
+						bind:value={searchQuery}
+						placeholder="Search..."
+						class="w-full rounded-md border border-zinc-700 bg-zinc-800 py-1.5 pr-3 pl-8 text-sm text-zinc-100 shadow-sm outline-none placeholder:text-zinc-500 focus:border-indigo-500 focus:ring-indigo-500"
+					/>
+				</div>
 			</div>
-
-			<div class="flex items-center gap-4">
+			<!-- Desktop: applied + view (hidden on mobile, shown in row 1 above) -->
+			<div class="hidden items-center gap-4 md:flex">
 				<span class="text-xs text-zinc-500">
 					Applied {appliedCount} / {artCalls.length}
 				</span>
-				<!-- View Toggle -->
 				<div class="flex items-center rounded-lg bg-zinc-800/50 p-1">
 					<button
 						class={`rounded-md p-1.5 transition-all ${viewMode === 'list' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-300'}`}
@@ -517,7 +570,7 @@
 						<!-- Header: Name, Location, Status -->
 						<div class="flex items-start justify-between gap-3">
 							<div class="min-w-0 flex-1">
-								<div class="flex flex-wrap items-center gap-2">
+								<div class="flex flex-col gap-1 md:flex-row md:flex-wrap md:items-center md:gap-2">
 									<h3
 										class={`truncate text-base font-bold ${
 											status.isOpen ? 'text-zinc-100' : 'text-zinc-500'
@@ -526,18 +579,26 @@
 									>
 										{call.name}
 									</h3>
-									<div
-										class={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${status.bg} ${status.text} border-transparent text-center`}
-									>
-										{status.label}
-									</div>
-									{#if call.group}
+									<div class="flex flex-wrap items-center gap-2">
 										<div
-											class="shrink-0 rounded-full border border-transparent bg-yellow-500/10 px-2 py-0.5 text-center text-[10px] font-medium text-yellow-500"
+											class={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${status.bg} ${status.text} border-transparent text-center`}
 										>
-											Group
+											{status.label}
 										</div>
-									{/if}
+										{#if call.priority}
+											<Star
+												class="h-3.5 w-3.5 shrink-0"
+												style="color: {settings.getAccentLightHex()}"
+											/>
+										{/if}
+										{#if call.group}
+											<div
+												class="shrink-0 rounded-full border border-transparent bg-yellow-500/10 px-2 py-0.5 text-center text-[10px] font-medium text-yellow-500"
+											>
+												Group
+											</div>
+										{/if}
+									</div>
 								</div>
 								<div
 									class={`mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs ${
