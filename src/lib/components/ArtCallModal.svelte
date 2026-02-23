@@ -18,6 +18,7 @@
 		link: '',
 		applied: false,
 		group: false,
+		priority: false,
 		idea: ''
 	});
 
@@ -33,10 +34,10 @@
 					link: entry.link || '',
 					applied: entry.applied || false,
 					group: entry.group || false,
+					priority: entry.priority || false,
 					idea: entry.idea || ''
 				};
 			} else {
-				// Reset
 				formData = {
 					name: '',
 					location: '',
@@ -46,6 +47,7 @@
 					link: '',
 					applied: false,
 					group: false,
+					priority: false,
 					idea: ''
 				};
 			}
@@ -150,8 +152,8 @@
 						</select>
 					</div>
 
-					<!-- Group Toggle -->
-					<div class="flex items-end pb-2">
+					<!-- Group & Priority Toggles -->
+					<div class="flex items-end gap-5 pb-2">
 						<div class="flex items-center">
 							<input
 								type="checkbox"
@@ -160,7 +162,17 @@
 								class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-yellow-500 focus:ring-yellow-500"
 							/>
 							<label for="group" class="ml-2 block text-sm font-medium text-zinc-300">Group</label>
-							</div>
+						</div>
+						<div class="flex items-center">
+							<input
+								type="checkbox"
+								id="priority"
+								bind:checked={formData.priority}
+								class="h-4 w-4 rounded border-zinc-600 bg-zinc-800 focus:ring-indigo-500"
+								style="color: {settings.getAccentHex()}"
+							/>
+							<label for="priority" class="ml-2 block text-sm font-medium text-zinc-300">Priority</label>
+						</div>
 					</div>
 
 					<!-- Funds -->

@@ -17,6 +17,7 @@
 		status: 'todo',
 		body: '',
 		deadline_at: '',
+		time_of_day: '',
 		completed_at: null as string | null,
 		color: '#000000',
 		checklist: [] as { id: string; title: string; items: { text: string; completed: boolean }[] }[],
@@ -34,12 +35,16 @@
 	$effect(() => {
 		if (isOpen) {
 			if (entry) {
+				// time_of_day from DB is "HH:MM:SS", input expects "HH:mm"
+				const timeVal = entry.time_of_day || '';
+				const timeForInput = timeVal ? timeVal.slice(0, 5) : '';
 				formData = {
 					title: entry.title || '',
 					type: entry.type || '',
 					status: entry.status || 'todo',
 					body: entry.body || '',
 					deadline_at: entry.deadline_at || '',
+					time_of_day: timeForInput,
 					completed_at: entry.completed_at || null,
 					color: entry.color || '#000000',
 					// Handle legacy flat checklist by wrapping it
@@ -59,6 +64,7 @@
 					status: 'todo',
 					body: '',
 					deadline_at: '',
+					time_of_day: '',
 					completed_at: null,
 					color: '#000000',
 					checklist: [],
@@ -80,10 +86,11 @@
 			formData.completed_at = null;
 		}
 
-		// Convert empty deadline to null for DB
+		// Convert empty deadline to null for DB; time_of_day: "HH:mm" -> "HH:mm:00" for PostgreSQL
 		const payload = {
 			...formData,
-			deadline_at: formData.deadline_at || null
+			deadline_at: formData.deadline_at || null,
+			time_of_day: formData.time_of_day ? formData.time_of_day + ':00' : null
 		};
 
 		onSave(payload);
@@ -311,6 +318,18 @@
 							type="date"
 							id="deadline_at"
 							bind:value={formData.deadline_at}
+							class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+						/>
+					</div>
+					<!-- Time (24h) -->
+					<div>
+						<label for="time_of_day" class="mb-1 block text-sm font-medium text-zinc-400"
+							>Time</label
+						>
+						<input
+							type="time"
+							id="time_of_day"
+							bind:value={formData.time_of_day}
 							class="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
 						/>
 					</div>
