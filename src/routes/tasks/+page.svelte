@@ -336,6 +336,46 @@
 		}
 	}
 
+	async function handleDuplicate(entry: any) {
+		isModalOpen = false;
+
+		const duplicatedChecklist = Array.isArray(entry.checklist)
+			? entry.checklist.map((list: any) => {
+					if ('items' in list) {
+						return {
+							...list,
+							id: crypto.randomUUID(),
+							items: list.items.map((item: any) => ({ ...item, completed: false }))
+						};
+					}
+					return { ...list, completed: false };
+				})
+			: null;
+
+		const payload = {
+			title: entry.title,
+			type: entry.type || null,
+			status: 'todo',
+			body: entry.body || null,
+			deadline_at: null,
+			time_of_day: null,
+			completed_at: null,
+			color: entry.color || null,
+			checklist: duplicatedChecklist,
+			links: Array.isArray(entry.links) ? entry.links : null
+		};
+
+		const { data, error } = await supabase.from('tasks').insert(payload).select().single();
+
+		if (error) {
+			console.error('Error duplicating task:', error);
+			showAlert('Error duplicating: ' + error.message, 'Error');
+		} else {
+			showAlert('Task duplicated!', 'Success');
+			if (data) dataStore.addTask(data);
+		}
+	}
+
 	async function handleSave(entry: any) {
 		const { id, ...payload } = entry;
 
@@ -461,6 +501,7 @@
 	onClose={() => (isModalOpen = false)}
 	onSave={handleSave}
 	onDelete={handleDeleteFromModal}
+	onDuplicate={handleDuplicate}
 />
 
 {#snippet weekNavigation()}

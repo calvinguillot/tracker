@@ -55,7 +55,7 @@
 		if (path === base + '/projects') return 'Projects';
 		if (path === base + '/tasks') return 'Tasks';
 		if (path === base + '/notes') return 'Notes';
-		if (path === base + '/experimental') return 'Experimental';
+		// if (path === base + '/experimental') return 'Experimental';
 		if (path === base + '/settings') return 'Settings';
 		return 'CG Tracker';
 	});
@@ -75,7 +75,7 @@
 	const isProjects = $derived($page.url.pathname === base + '/projects');
 	const isTasks = $derived($page.url.pathname === base + '/tasks');
 	const isNotes = $derived($page.url.pathname === base + '/notes');
-	const isExperimental = $derived($page.url.pathname === base + '/experimental');
+	// const isExperimental = $derived($page.url.pathname === base + '/experimental');
 	const isSettings = $derived($page.url.pathname === base + '/settings');
 </script>
 
@@ -169,7 +169,7 @@
 						<StickyNote class="h-5 w-5" />
 						<span class="text-sm font-medium">Notes</span>
 					</a>
-					<a
+					<!-- <a
 						href="{base}/experimental"
 						class="flex items-center gap-2 px-4 transition-colors hover:text-(--accent-color)"
 						class:text-zinc-400={!isExperimental}
@@ -178,7 +178,7 @@
 					>
 						<FlaskConical class="h-5 w-5" />
 						<span class="text-sm font-medium">Experimental</span>
-					</a>
+					</a> -->
 				</nav>
 
 				<div
@@ -252,14 +252,14 @@
 					<StickyNote class="h-6 w-6" />
 					<span class="text-lg font-medium">Notes</span>
 				</a>
-				<a
+				<!-- <a
 					href="{base}/experimental"
 					class="flex items-center gap-3 rounded-md px-6 py-4 text-zinc-300 transition-colors hover:bg-zinc-800/50 hover:text-(--accent-color)"
 					onclick={() => (isMobileMenuOpen = false)}
 				>
 					<FlaskConical class="h-6 w-6" />
 					<span class="text-lg font-medium">Experimental</span>
-				</a>
+				</a> -->
 				<a
 					href="{base}/settings"
 					class="flex items-center gap-3 rounded-md px-6 py-4 text-zinc-300 transition-colors hover:bg-zinc-800/50 hover:text-(--accent-color)"

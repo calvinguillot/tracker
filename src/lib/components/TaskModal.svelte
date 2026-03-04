@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
-	import { Trash2, Plus, CheckSquare, Square, ExternalLink, GripVertical } from 'lucide-svelte';
+	import { Trash2, Plus, CheckSquare, Square, ExternalLink, GripVertical, Copy } from 'lucide-svelte';
 	import { settings } from '$lib/settingsStore.svelte';
 
-	let { isOpen, entry, onClose, onSave, onDelete } = $props<{
+	let { isOpen, entry, onClose, onSave, onDelete, onDuplicate } = $props<{
 		isOpen: boolean;
 		entry: any;
 		onClose: () => void;
 		onSave: (data: any) => void;
 		onDelete?: (id: number) => void;
+		onDuplicate?: (data: any) => void;
 	}>();
 
 	let formData = $state({
@@ -503,16 +504,26 @@
 				<div
 					class="sticky bottom-0 mt-6 flex justify-between gap-3 border-t border-zinc-800 bg-zinc-900 pt-4"
 				>
-					<div>
-						{#if entry && onDelete}
-							<button
-								type="button"
-								onclick={() => onDelete(entry.id)}
-								class="rounded-md bg-red-500/10 px-3.5 py-2.5 text-sm font-semibold text-red-400 shadow-sm ring-1 ring-red-500/20 transition-colors ring-inset hover:bg-red-500/20"
-								>Delete</button
-							>
-						{/if}
-					</div>
+				<div class="flex gap-2">
+					{#if entry && onDelete}
+						<button
+							type="button"
+							onclick={() => onDelete(entry.id)}
+							class="rounded-md bg-red-500/10 px-3.5 py-2.5 text-sm font-semibold text-red-400 shadow-sm ring-1 ring-red-500/20 transition-colors ring-inset hover:bg-red-500/20"
+							>Delete</button
+						>
+					{/if}
+					{#if entry && onDuplicate}
+						<button
+							type="button"
+							onclick={() => onDuplicate(entry)}
+							class="flex items-center gap-1.5 rounded-md bg-zinc-800 px-3.5 py-2.5 text-sm font-semibold text-zinc-300 shadow-sm ring-1 ring-zinc-700 ring-inset transition-colors hover:bg-zinc-700"
+						>
+							<Copy class="h-4 w-4" />
+							Duplicate
+						</button>
+					{/if}
+				</div>
 					<div class="flex gap-3">
 						<button
 							type="button"
