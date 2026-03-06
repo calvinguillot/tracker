@@ -238,7 +238,7 @@
 <GLTF url={modelUrl} position={[0, -1, 0]} onload={handleLoad} onerror={handleError} />
 
 <!-- Icons: grouped by type, moving in clusters with cohesion + separation + noise -->
-{#each iconSlots as slot, i (i)}
+{#each iconSlots as slot, i}
 	{#if slotState[i]}
 		<T.Sprite position={[slotState[i].x, slotState[i].y, slotState[i].z]} scale={[0.4, 0.4, 0.4]}>
 			<T.SpriteMaterial map={getEmojiTexture(slot.emoji)} transparent={true} />

@@ -1,7 +1,7 @@
-<script>
+<script lang="ts">
 	import { getContext } from 'svelte';
 
-	const { width, height, xScale, yRange } = getContext('LayerCake');
+	const { width, height, xScale, yRange } = getContext('LayerCake') as any;
 
 	let {
 		tickMarks = false,
@@ -9,7 +9,7 @@
 		tickMarkLength = 6,
 		baseline = false,
 		snapLabels = false,
-		format = (d) => d,
+		format = (d: unknown) => d,
 		ticks = undefined,
 		tickGutter = 0,
 		dx = 0,
@@ -31,7 +31,7 @@
 
 	let halfBand = $derived(isBandwidth ? $xScale.bandwidth() / 2 : 0);
 
-	function textAnchor(i) {
+	function textAnchor(i: number) {
 		if (snapLabels === true) {
 			if (i === 0) {
 				return 'start';
@@ -45,7 +45,7 @@
 </script>
 
 <g class="axis x-axis" class:snapLabels>
-	{#each tickVals as tick, i (tick)}
+	{#each tickVals as tick, i}
 		{#if baseline === true}
 			<line class="baseline" y1={$height} y2={$height} x1="0" x2={$width} />
 		{/if}

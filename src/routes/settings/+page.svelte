@@ -12,6 +12,12 @@
 		if (settings.settings.global_types.transition_duration === undefined) {
 			settings.settings.global_types.transition_duration = 200;
 		}
+		if (!settings.settings.global_types.location) {
+			settings.settings.global_types.location = { city: '', country: '' };
+		}
+		if (settings.settings.global_types.chart_smoothing === undefined) {
+			settings.settings.global_types.chart_smoothing = 0.5;
+		}
 		isLoading = false;
 	});
 
@@ -21,7 +27,7 @@
 	}
 
 	function addCallType() {
-		const newId = Math.max(0, ...settings.settings.calls_types.map((t) => Number(t.id))) + 1;
+		const newId = Math.max(0, ...settings.settings.calls_types.map((t: SettingItem) => Number(t.id))) + 1;
 		settings.settings.calls_types.push({ id: newId, label: 'New Type' });
 	}
 
@@ -30,7 +36,7 @@
 	}
 
 	function addProjectType() {
-		const newId = Math.max(0, ...settings.settings.project_types.map((t) => Number(t.id))) + 1;
+		const newId = Math.max(0, ...settings.settings.project_types.map((t: SettingItem) => Number(t.id))) + 1;
 		settings.settings.project_types.push({
 			id: newId,
 			label: 'New Project Type',
@@ -43,7 +49,7 @@
 	}
 
 	function addTaskType() {
-		const newId = Math.max(0, ...settings.settings.task_types.map((t) => Number(t.id))) + 1;
+		const newId = Math.max(0, ...settings.settings.task_types.map((t: SettingItem) => Number(t.id))) + 1;
 		settings.settings.task_types.push({
 			id: String(newId),
 			label: 'New Task Type',
@@ -177,6 +183,42 @@
 						min="0"
 						step="50"
 					/>
+				</div>
+
+				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+					<span class="text-sm font-medium text-zinc-400">Location</span>
+					<div class="flex flex-1 gap-2">
+						<input
+							type="text"
+							placeholder="City"
+							bind:value={settings.settings.global_types.location!.city}
+							class="flex-1 rounded-md border border-zinc-700 bg-zinc-800 p-2 text-sm text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+						/>
+						<input
+							type="text"
+							placeholder="Country"
+							bind:value={settings.settings.global_types.location!.country}
+							class="flex-1 rounded-md border border-zinc-700 bg-zinc-800 p-2 text-sm text-zinc-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+						/>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4">
+					<label for="chart_smoothing" class="text-sm font-medium text-zinc-400"
+						>Chart Smoothing</label
+					>
+					<input
+						type="range"
+						id="chart_smoothing"
+						bind:value={settings.settings.global_types.chart_smoothing}
+						class="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-zinc-700 accent-indigo-500"
+						min="0"
+						max="1"
+						step="0.1"
+					/>
+					<span class="w-8 text-sm text-zinc-300"
+						>{settings.settings.global_types.chart_smoothing ?? 0.5}</span
+					>
 				</div>
 			</div>
 		</section>

@@ -131,8 +131,7 @@
 		<Navbar {session} />
 
 		<div
-			class="container mx-auto flex-1 p-4 pt-4"
-			class:flex={!session && $page.url.pathname === base + '/'}
+			class="container mx-auto flex min-h-0 flex-1 flex-col p-4 pt-4"
 			class:flex-col={!session && $page.url.pathname === base + '/'}
 			class:pb-20={showBottomNavbar}
 			class:md:pb-4={showBottomNavbar}

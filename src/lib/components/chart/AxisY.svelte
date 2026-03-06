@@ -1,7 +1,7 @@
-<script>
+<script lang="ts">
 	import { getContext } from 'svelte';
 
-	const { xRange, yScale, width } = getContext('LayerCake');
+	const { xRange, yScale, width } = getContext('LayerCake') as any;
 
 	let {
 		tickMarks = false,
@@ -9,7 +9,7 @@
 		snapBaselineLabel = false,
 		gridlines = true,
 		tickMarkLength = undefined,
-		format = (d) => d,
+		format = (d: unknown) => d,
 		ticks = 4,
 		tickGutter = 0,
 		dx = 0,
@@ -17,7 +17,7 @@
 		charPixelWidth = 7.25
 	} = $props();
 
-	function calcStringLength(sum, val) {
+	function calcStringLength(sum: number, val: string) {
 		if (val === ',' || val === '.') return sum + charPixelWidth * 0.5;
 		return sum + charPixelWidth;
 	}
@@ -30,14 +30,14 @@
 			: isBandwidth
 				? $yScale.domain()
 				: typeof ticks === 'function'
-					? ticks($yScale.ticks())
+					? (ticks as (t: unknown[]) => unknown[])($yScale.ticks())
 					: $yScale.ticks(ticks)
 	);
 
 	let widestTickLen = $derived(
 		Math.max(
 			10,
-			Math.max(...tickVals.map((d) => format(d).toString().split('').reduce(calcStringLength, 0)))
+			Math.max(...tickVals.map((d: unknown) => format(d).toString().split('').reduce(calcStringLength, 0)))
 		)
 	);
 
@@ -55,7 +55,7 @@
 </script>
 
 <g class="axis y-axis">
-	{#each tickVals as tick (tick)}
+	{#each tickVals as tick}
 		{@const tickValPx = $yScale(tick)}
 		<g class="tick tick-{tick}" transform="translate({$xRange[0]}, {tickValPx})">
 			{#if gridlines === true}

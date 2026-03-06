@@ -3,7 +3,22 @@
 	import { base } from '$app/paths';
 	import { onMount } from 'svelte';
 	import type { Session } from '@supabase/supabase-js';
-	import { Loader, ArrowUp, ArrowDown, CheckSquare, Palette, SquareCheckBig } from 'lucide-svelte';
+	import {
+		ArrowDown,
+		SquareCheckBig,
+		Palette,
+		Sun,
+		Moon,
+		CloudSun,
+		CloudFog,
+		CloudDrizzle,
+		CloudRain,
+		Snowflake,
+		CloudLightning,
+		Wind,
+		Thermometer,
+		Cloud
+	} from 'lucide-svelte';
 	import { LayerCake, Svg, Html } from 'layercake';
 	import { scaleTime } from 'd3-scale';
 	import { timeFormat } from 'd3-time-format';
@@ -12,12 +27,11 @@
 	import AxisX from '$lib/components/chart/AxisX.svelte';
 	import AxisY from '$lib/components/chart/AxisY.svelte';
 	import SharedTooltip from '$lib/components/chart/SharedTooltip.svelte';
-	import { showAlert, alertState } from '$lib/alertStore.svelte';
+	import EventsScatter from '$lib/components/chart/EventsScatter.svelte';
 	import { settings } from '$lib/settingsStore.svelte';
 	import { dataStore } from '$lib/dataStore.svelte';
 	import { Capacitor } from '@capacitor/core';
 
-	// Types for today's deadlines
 	type TodayTask = {
 		id: number;
 		title: string;
@@ -42,20 +56,126 @@
 
 	let { data } = $props();
 	let session = $state<Session | null>(null);
-	// let isLoading = $state(true); // Removed
-	// let isStatsLoading = $state(false); // Removed
 
 	let rawData = $derived(dataStore.dailyTracking);
 
-	let appliedArtCallsCount = $derived(dataStore.artCalls.filter((a) => a.applied).length);
-	let completedProjectsCount = $derived(dataStore.projects.filter((p) => p.status === 3).length);
-	let completedTasksCount = $derived(dataStore.tasks.filter((t) => t.status === 'done').length);
+	// --- Weather ---
+	let weatherData = $state<{
+		temperature: number;
+		weatherCode: number;
+		windSpeed: number;
+		isDay: boolean;
+	} | null>(null);
+	let weatherLoading = $state(false);
+	let locationName = $state('');
+	let locationCountry = $state('');
 
-	// Today's deadlines - use Date comparison for correct timezone handling
+	function getWeatherIcon(code: number, isDay: boolean) {
+		if (code === 0) return isDay ? Sun : Moon;
+		if (code <= 3) return isDay ? CloudSun : Cloud;
+		if (code <= 48) return CloudFog;
+		if (code <= 57) return CloudDrizzle;
+		if (code <= 67) return CloudRain;
+		if (code <= 77) return Snowflake;
+		if (code <= 82) return CloudRain;
+		if (code <= 86) return Snowflake;
+		return CloudLightning;
+	}
+
+	function getWeatherLabel(code: number): string {
+		if (code === 0) return 'Clear Sky';
+		if (code === 1) return 'Mostly Clear';
+		if (code === 2) return 'Partly Cloudy';
+		if (code === 3) return 'Overcast';
+		if (code <= 48) return 'Foggy';
+		if (code <= 55) return 'Drizzle';
+		if (code <= 57) return 'Freezing Drizzle';
+		if (code <= 65) return 'Rain';
+		if (code <= 67) return 'Freezing Rain';
+		if (code <= 75) return 'Snow';
+		if (code === 77) return 'Snow Grains';
+		if (code <= 82) return 'Showers';
+		if (code <= 86) return 'Snow Showers';
+		if (code === 95) return 'Thunderstorm';
+		return 'Thunderstorm';
+	}
+
+	function getWeatherIconColor(code: number, isDay: boolean): string {
+		if (code === 0) return isDay ? '#fbbf24' : '#818cf8';
+		if (code <= 3) return '#94a3b8';
+		if (code <= 48) return '#9ca3af';
+		if (code <= 57) return '#60a5fa';
+		if (code <= 67) return '#3b82f6';
+		if (code <= 77) return '#e2e8f0';
+		if (code <= 82) return '#3b82f6';
+		if (code <= 86) return '#e2e8f0';
+		return '#fbbf24';
+	}
+
+	function getBrowserLocation(): Promise<{ lat: number; lon: number } | null> {
+		return new Promise((resolve) => {
+			if (!navigator.geolocation) {
+				resolve(null);
+				return;
+			}
+			navigator.geolocation.getCurrentPosition(
+				(pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+				() => resolve(null),
+				{ timeout: 10000, maximumAge: 600000 }
+			);
+		});
+	}
+
+	async function loadWeather() {
+		weatherLoading = true;
+		try {
+			const coords = await getBrowserLocation();
+			if (!coords) return;
+
+			const [weatherRes, reverseRes] = await Promise.all([
+				fetch(
+					`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,weather_code,wind_speed_10m,is_day`
+				),
+				fetch(
+					`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lon}&zoom=10`,
+					{ headers: { 'User-Agent': 'tracker-app' } }
+				)
+			]);
+
+			const weatherJson = await weatherRes.json();
+			if (weatherJson.current) {
+				weatherData = {
+					temperature: Math.round(weatherJson.current.temperature_2m),
+					weatherCode: weatherJson.current.weather_code,
+					windSpeed: Math.round(weatherJson.current.wind_speed_10m),
+					isDay: weatherJson.current.is_day === 1
+				};
+			}
+
+			const reverseJson = await reverseRes.json();
+			const addr = reverseJson.address;
+			locationName = addr?.city || addr?.town || addr?.village || addr?.municipality || '';
+			locationCountry = addr?.country || '';
+		} catch (e) {
+			console.error('Weather fetch error:', e);
+		} finally {
+			weatherLoading = false;
+		}
+	}
+
+	// --- Today's Deadlines ---
 	let todayTasks = $derived.by(() => {
 		const today = new Date();
 		const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-		const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+		const endOfDay = new Date(
+			today.getFullYear(),
+			today.getMonth(),
+			today.getDate(),
+			23,
+			59,
+			59,
+			999
+		);
 
 		return dataStore.tasks
 			.filter((t) => {
@@ -77,7 +197,15 @@
 	let todayArtCalls = $derived.by(() => {
 		const today = new Date();
 		const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-		const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+		const endOfDay = new Date(
+			today.getFullYear(),
+			today.getMonth(),
+			today.getDate(),
+			23,
+			59,
+			59,
+			999
+		);
 
 		return dataStore.artCalls
 			.filter((a) => {
@@ -89,17 +217,15 @@
 			.sort((a, b) => (a.deadline ?? '').localeCompare(b.deadline ?? ''));
 	});
 
-	// Combined and sorted deadlines for today
 	let todayDeadlines = $derived.by(() => {
 		const items: DeadlineItem[] = [
 			...todayTasks.map((t) => ({ kind: 'task' as const, data: t })),
 			...todayArtCalls.map((a) => ({ kind: 'artcall' as const, data: a }))
 		];
-		// Tasks are already sorted, but mixing them might require re-sort if we care about time within day (if any)
-		// For now, task/artcall order is fine.
 		return items;
 	});
 
+	// --- Chart Data ---
 	let parsedData = $derived(
 		rawData
 			.map((d: any) => ({
@@ -109,37 +235,31 @@
 			.sort((a: any, b: any) => a.created_at.getTime() - b.created_at.getTime())
 	);
 
-	// Metrics configuration
 	const initialMetrics = {
-		mood: { label: 'Mood', color: '#8b5cf6', active: true }, // violet-500
-		energy: { label: 'Energy', color: '#f97316', active: true }, // orange-500
-		physical: { label: 'Physical', color: '#ef4444', active: true }, // red-500
-		sleep: { label: 'Sleep', color: '#3b82f6', active: true }, // blue-500
-		meals: { label: 'Meals', color: '#22c55e', active: true }, // green-500
-		weight: { label: 'Weight', color: '#71717a', active: false } // zinc-500
+		mood: { label: 'Mood', color: '#8b5cf6', active: true, strokeDasharray: 'none' },
+		energy: { label: 'Energy', color: '#f97316', active: true, strokeDasharray: '6 4' },
+		physical: { label: 'Physical', color: '#ef4444', active: true, strokeDasharray: '2 3' },
+		sleep: { label: 'Sleep', color: '#3b82f6', active: true, strokeDasharray: '12 6' },
+		meals: { label: 'Meals', color: '#22c55e', active: true, strokeDasharray: '3 2 1 2' }
 	};
 
 	type MetricKey = keyof typeof initialMetrics;
 
 	let activeMetrics = $state(initialMetrics);
 
-	// Date Range Filter
 	let startDate = $state('');
 	let endDate = $state('');
 
-	// Effect to set default range
 	$effect(() => {
 		if (parsedData.length > 0 && !startDate && !endDate) {
 			const start = parsedData[0].created_at;
 			const end = new Date();
-
 			const formatDate = (date: Date) => {
 				const year = date.getFullYear();
 				const month = String(date.getMonth() + 1).padStart(2, '0');
 				const day = String(date.getDate()).padStart(2, '0');
 				return `${year}-${month}-${day}`;
 			};
-
 			startDate = formatDate(start);
 			endDate = formatDate(end);
 		}
@@ -148,64 +268,124 @@
 	let filteredData = $derived.by(() => {
 		let d = parsedData;
 		if (startDate) {
-			// Create date at midnight local time to compare
-			// Input type="date" returns YYYY-MM-DD
-			// new Date(startDate) creates a date at 00:00:00 UTC usually if simple string, or local.
-			// Let's force it to be start of day in local time or consistent with how created_at is parsed.
-			// parsedData uses new Date(timestamp string).
-
-			// To ensure inclusive start date, we want entries where created_at >= start of that day.
 			const [y, m, d_part] = startDate.split('-').map(Number);
 			const startLocal = new Date(y, m - 1, d_part);
-
 			d = d.filter((item: any) => item.created_at >= startLocal);
 		}
 		if (endDate) {
 			const [y, m, d_part] = endDate.split('-').map(Number);
 			const endLocal = new Date(y, m - 1, d_part);
-			// Set end date to end of day to include the selected date
 			endLocal.setHours(23, 59, 59, 999);
 			d = d.filter((item: any) => item.created_at <= endLocal);
 		}
 		return d;
 	});
 
-	// Calculate Y Domain: min 0, at least 0–10 range, scale up for weight etc.
 	const Y_DOMAIN_MIN = 0;
 	const Y_DOMAIN_MAX_AT_LEAST = 10;
+
+	let chartCurrentMonthOnly = $state(true);
+
+	let chartData = $derived.by(() => {
+		if (!chartCurrentMonthOnly) return filteredData;
+		const now = new Date();
+		const currentMonth = now.getMonth();
+		const currentYear = now.getFullYear();
+		return filteredData.filter((d: any) => {
+			return d.created_at.getMonth() === currentMonth && d.created_at.getFullYear() === currentYear;
+		});
+	});
 
 	let yDomain = $derived.by(() => {
 		const activeKeys = (Object.keys(activeMetrics) as MetricKey[]).filter(
 			(k) => activeMetrics[k].active
 		);
 		if (activeKeys.length === 0) return [Y_DOMAIN_MIN, Y_DOMAIN_MAX_AT_LEAST];
-
 		let max = 0;
-		for (const d of filteredData) {
+		for (const d of chartData) {
 			for (const key of activeKeys) {
 				const val = d[key];
-				if (typeof val === 'number' && val > max) {
-					max = val;
-				}
+				if (typeof val === 'number' && val > max) max = val;
 			}
 		}
 		const upper = Math.max(Y_DOMAIN_MAX_AT_LEAST, max * 1.1);
 		return [Y_DOMAIN_MIN, upper];
 	});
 
-	// Formatting - using numeric format for better readability
 	const formatTime = timeFormat('%m/%d');
 
-	// Events toggle: all time vs current month
-	let eventsCurrentMonthOnly = $state(true);
-
-	// Metrics dropdown state
 	let metricsDropdownOpen = $state(false);
 	let activeMetricsCount = $derived(
 		(Object.values(activeMetrics) as { active: boolean }[]).filter((m) => m.active).length
 	);
 
-	// Activity Statistics
+	// --- Latest Weight ---
+	let latestWeight = $derived.by(() => {
+		for (let i = parsedData.length - 1; i >= 0; i--) {
+			if (parsedData[i].weight != null) return parsedData[i].weight;
+		}
+		return null;
+	});
+
+	// --- Averages ---
+	let averagesCurrentMonthOnly = $state(true);
+
+	let averages = $derived.by(() => {
+		let dataToUse = filteredData;
+		if (averagesCurrentMonthOnly) {
+			const now = new Date();
+			const currentMonth = now.getMonth();
+			const currentYear = now.getFullYear();
+			dataToUse = filteredData.filter((d: any) => {
+				return (
+					d.created_at.getMonth() === currentMonth && d.created_at.getFullYear() === currentYear
+				);
+			});
+		}
+
+		const metrics = ['mood', 'energy', 'physical', 'sleep', 'meals'] as const;
+		const result: Record<string, number | null> = {};
+
+		for (const metric of metrics) {
+			const values = dataToUse.map((d: any) => d[metric]).filter((v: any) => v != null);
+			result[metric] =
+				values.length > 0
+					? Math.round((values.reduce((a: number, b: number) => a + b, 0) / values.length) * 10) /
+						10
+					: null;
+		}
+
+		return result;
+	});
+
+	const averageLabels: Record<string, { label: string; color: string }> = {
+		mood: { label: 'Mood', color: '#8b5cf6' },
+		energy: { label: 'Energy', color: '#f97316' },
+		physical: { label: 'Physical', color: '#ef4444' },
+		sleep: { label: 'Sleep', color: '#3b82f6' },
+		meals: { label: 'Meals', color: '#22c55e' }
+	};
+
+	// --- Events / Donut ---
+	let eventsCurrentMonthOnly = $state(true);
+
+	const eventColors: Record<string, string> = {
+		ihana: '#ec4899',
+		calvin_day: '#a855f7',
+		exercise: '#f97316',
+		call_family: '#06b6d4',
+		cry: '#94a3b8',
+		loving: '#ef4444',
+		friends: '#22c55e',
+		sickness: '#eab308',
+		work: '#3b82f6',
+		study: '#8b5cf6',
+		culture: '#14b8a6',
+		art: '#f43f5e',
+		music: '#d946ef',
+		leisure: '#10b981'
+	};
+
 	let activityStats = $derived.by(() => {
 		const stats = {
 			ihana: { label: 'Ihana', count: 0, icon: '❤️' },
@@ -224,7 +404,6 @@
 			leisure: { label: 'Leisure', count: 0, icon: '🎮' }
 		};
 
-		// Filter data based on toggle
 		let dataToCount = filteredData;
 		if (eventsCurrentMonthOnly) {
 			const now = new Date();
@@ -256,6 +435,110 @@
 		return stats;
 	});
 
+	// Scatter plot data: one point per (day, event) where event occurred
+	function eventOccurred(d: any, key: string): boolean {
+		switch (key) {
+			case 'exercise':
+				return !!(d.exercise_type && d.exercise_type.trim());
+			case 'ihana':
+				return d.ihana === true;
+			case 'calvin_day':
+				return d.calvin_day === true;
+			case 'sickness':
+				return d.sickness === true;
+			case 'work':
+				return !!(d.work_type && d.work_type.trim());
+			case 'study':
+				return !!(d.study_type && d.study_type.trim());
+			case 'culture':
+				return !!(d.culture_type && d.culture_type.trim());
+			case 'art':
+				return !!(d.art_type && d.art_type.trim());
+			case 'music':
+				return !!(d.music_type && d.music_type.trim());
+			case 'leisure':
+				return !!(d.leisure_type && d.leisure_type.trim());
+			case 'call_family':
+				return d.call_family === true;
+			case 'cry':
+				return d.cry === true;
+			case 'loving':
+				return d.loving === true;
+			case 'friends':
+				return d.friends === true;
+			default:
+				return false;
+		}
+	}
+
+	let scatterPoints = $derived.by(() => {
+		const points: { date: Date; eventKey: string }[] = [];
+		let dataToUse = filteredData;
+		if (eventsCurrentMonthOnly) {
+			const now = new Date();
+			dataToUse = filteredData.filter((d: any) => {
+				const date = d.created_at;
+				return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+			});
+		}
+
+		const eventKeys = Object.keys(activityStats);
+		for (const d of dataToUse) {
+			const date = d.created_at;
+			for (const key of eventKeys) {
+				if (eventOccurred(d, key)) {
+					points.push({ date, eventKey: key });
+				}
+			}
+		}
+		return points;
+	});
+
+	// Always show all event types (including 0 count) for consistent layout
+	const scatterEventOrder = [
+		'ihana',
+		'calvin_day',
+		'exercise',
+		'call_family',
+		'cry',
+		'loving',
+		'friends',
+		'sickness',
+		'work',
+		'study',
+		'culture',
+		'art',
+		'music',
+		'leisure'
+	];
+
+	let scatterEventLabels = $derived(
+		Object.fromEntries(Object.entries(activityStats).map(([k, v]) => [k, v.label]))
+	);
+
+	// Events chart responsive dimensions (like Progress chart)
+	let eventsChartContainerRef: HTMLDivElement | undefined = $state();
+	let eventsChartSize = $state<{ width: number; height: number } | null>(null);
+
+	function updateEventsChartSize() {
+		if (!eventsChartContainerRef) return;
+		const w = eventsChartContainerRef.clientWidth;
+		const h = eventsChartContainerRef.clientHeight;
+		if (w >= 100 && h >= 80) {
+			eventsChartSize = { width: w, height: h };
+		}
+	}
+
+	$effect(() => {
+		const el = eventsChartContainerRef;
+		if (!el) return;
+		const ro = new ResizeObserver(() => updateEventsChartSize());
+		ro.observe(el);
+		updateEventsChartSize();
+		return () => ro.disconnect();
+	});
+
+	// --- Auth ---
 	onMount(() => {
 		supabase.auth.getSession().then(({ data: { session: s } }) => {
 			session = s;
@@ -267,6 +550,8 @@
 			session = _session;
 		});
 
+		loadWeather();
+
 		return () => subscription.unsubscribe();
 	});
 
@@ -275,7 +560,6 @@
 		activeMetrics[k].active = !activeMetrics[k].active;
 	}
 
-	// Helper functions for deadline cards
 	function getStatusColor(status: string | null) {
 		switch (status) {
 			case 'todo':
@@ -297,40 +581,6 @@
 			.join(' ');
 	}
 
-	function convertToCSV(objArray: any[]) {
-		if (!objArray || objArray.length === 0) return '';
-		const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
-
-		// Collect all unique headers from all objects to handle varying schemas if any
-		const headers = Object.keys(array[0]);
-		let str = headers.join(',') + '\r\n';
-
-		for (let i = 0; i < array.length; i++) {
-			let line = '';
-			for (const header of headers) {
-				if (line !== '') line += ',';
-
-				let item = array[i][header];
-
-				if (item === null || item === undefined) {
-					item = '';
-				} else if (typeof item === 'object') {
-					// JSON objects like checklist or arrays
-					item = JSON.stringify(item).replace(/"/g, '""');
-					item = `"${item}"`;
-				} else {
-					item = String(item).replace(/"/g, '""');
-					if (item.search(/("|,|\n)/g) >= 0) {
-						item = `"${item}"`;
-					}
-				}
-				line += item;
-			}
-			str += line + '\r\n';
-		}
-		return str;
-	}
-
 	async function signInWithGithub() {
 		const redirectTo = Capacitor.isNativePlatform()
 			? 'com.cgtracker.app://auth/callback'
@@ -341,204 +591,291 @@
 		});
 		if (error) console.error('Error signing in:', error);
 	}
-
-	async function backupDatabase() {
-		const tables = ['dailyTracking', 'projects', 'artCalls', 'notes', 'tasks'];
-
-		for (const table of tables) {
-			const { data, error } = await supabase.from(table).select('*');
-
-			if (error) {
-				console.error(`Error fetching ${table}:`, error);
-				showAlert(`Error backing up ${table}: ${error.message}`, 'Error');
-				continue;
-			}
-
-			if (!data || data.length === 0) continue;
-
-			const csv = convertToCSV(data);
-			const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-			const link = document.createElement('a');
-			const url = URL.createObjectURL(blob);
-
-			link.setAttribute('href', url);
-			link.setAttribute(
-				'download',
-				`${table}_backup_${new Date().toISOString().split('T')[0]}.csv`
-			);
-			link.style.visibility = 'hidden';
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-
-			// Small delay to prevent browser blocking multiple downloads
-			await new Promise((resolve) => setTimeout(resolve, 500));
-		}
-	}
 </script>
 
 <div class="flex flex-1 flex-col">
 	{#if session}
-		<div class="space-y-4">
-			<!-- Main Content: Chart + Events + Today's Tasks side by side on desktop -->
-			<!-- Desktop: 1/2 Chart, 1/4 Events, 1/4 Today's Tasks + Done -->
-			<!-- Mobile: Chart first, then Today's Tasks, then Events -->
-			<div class="grid gap-4 lg:grid-cols-4">
-				<!-- Timeline (Chart) - 1/2 width on desktop, first on mobile -->
-				<div class="order-1 space-y-3 lg:order-1 lg:col-span-2">
-					<h2 class="hidden text-lg font-bold text-zinc-100 md:block">Dashboard</h2>
-
-					<!-- Controls toolbar (no card background, above chart) -->
-					<div class="flex flex-wrap items-center justify-between gap-4 text-sm">
-						<!-- Metrics Multi-Select Dropdown -->
-						<div class="flex flex-wrap items-center gap-2">
-							<span class="text-zinc-500">Metrics:</span>
-							<div class="relative">
-								<button
-									onclick={() => (metricsDropdownOpen = !metricsDropdownOpen)}
-									class="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm transition-colors hover:bg-zinc-700"
-								>
-									<!-- Color chips for active metrics -->
-									<div class="flex items-center gap-1">
-										{#each Object.entries(activeMetrics) as [key, config]}
-											{#if config.active}
-												<span
-													class="h-2.5 w-2.5 rounded-full"
-													style:background-color={config.color}
-													title={config.label}
-												></span>
-											{/if}
-										{/each}
+		<!-- Desktop: Section 1 (1/3) = weather+averages | tasks | Section 2 (2/3) = chart | events -->
+		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden lg:flex-row">
+			<!-- Section 1: 1/3 width, 2 flex rows (greeting+averages | tasks) to align with chart | events -->
+			<div class="flex min-w-0 min-h-0 flex-1 flex-col gap-4 lg:min-w-0 lg:flex-[1]">
+				<!-- Row 1: Weather + Averages (aligns with Progress chart, space under averages is ok) -->
+				<div class="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+					<!-- Weather card: no background, centered -->
+					<div class="relative shrink-0 p-4 sm:p-5">
+						<!-- Centered weather content -->
+						<div class="flex flex-col items-center justify-center gap-2">
+							{#if weatherData}
+								{@const WeatherIcon = getWeatherIcon(weatherData.weatherCode, weatherData.isDay)}
+								<div class="flex items-center gap-2">
+									<WeatherIcon
+										class="h-10 w-10 shrink-0"
+										style="color: {getWeatherIconColor(weatherData.weatherCode, weatherData.isDay)}"
+									/>
+									<div class="flex flex-col gap-0.5">
+										<span class="text-2xl font-bold text-zinc-100">{weatherData.temperature}°C</span>
+										<span class="flex items-center gap-1 text-sm text-zinc-400">
+											<Wind class="h-3.5 w-3.5" />
+											{weatherData.windSpeed} km/h
+										</span>
 									</div>
-									<span class="text-zinc-400">{activeMetricsCount} selected</span>
-									<ArrowDown class="h-3.5 w-3.5 text-zinc-400" />
-								</button>
-
-								{#if metricsDropdownOpen}
-									<!-- Backdrop to close dropdown -->
-									<button
-										class="fixed inset-0 z-10"
-										onclick={() => (metricsDropdownOpen = false)}
-										aria-label="Close dropdown"
-									></button>
-									<!-- Dropdown panel -->
-									<div
-										class="absolute left-0 z-20 mt-1 w-48 rounded-md border border-zinc-700 bg-zinc-800 py-1 shadow-lg"
-									>
-										{#each Object.entries(activeMetrics) as [key, config]}
-											<button
-												class="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm transition-colors hover:bg-zinc-700"
-												onclick={() => toggleMetric(key)}
-											>
-												<span class="h-3 w-3 rounded-full" style:background-color={config.color}
-												></span>
-												<span class={config.active ? 'text-zinc-100' : 'text-zinc-400'}>
-													{config.label}
-												</span>
-												{#if config.active}
-													<svg
-														class="ml-auto h-4 w-4 text-indigo-400"
-														fill="none"
-														viewBox="0 0 24 24"
-														stroke="currentColor"
-													>
-														<path
-															stroke-linecap="round"
-															stroke-linejoin="round"
-															stroke-width="2"
-															d="M5 13l4 4L19 7"
-														/>
-													</svg>
-												{/if}
-											</button>
-										{/each}
-									</div>
-								{/if}
-							</div>
-						</div>
-
-						<!-- Date Range -->
-						<!-- <div class="flex flex-wrap items-center gap-2">
-							<span class="text-zinc-500">Range:</span>
-							<input
-								type="date"
-								bind:value={startDate}
-								class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
-							/>
-							<span class="text-zinc-500">to</span>
-							<input
-								type="date"
-								bind:value={endDate}
-								class="cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-100 shadow-sm outline-none focus:border-indigo-500 focus:ring-indigo-500"
-							/>
-							{#if startDate || endDate}
-								<button
-									onclick={() => {
-										startDate = '';
-										endDate = '';
-									}}
-									class="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-400 shadow-sm transition-colors hover:bg-zinc-700 hover:text-zinc-100"
-								>
-									Reset
-								</button>
+								</div>
+								<!-- Status and location below -->
+								<div class="flex flex-col items-center gap-0.5 text-sm text-zinc-400">
+									<span>{getWeatherLabel(weatherData.weatherCode)}</span>
+									{#if locationName || locationCountry}
+										<span class="text-zinc-500">
+											{locationName}{#if locationName && locationCountry}, {/if}{locationCountry}
+										</span>
+									{/if}
+								</div>
+							{:else if weatherLoading}
+								<div class="flex flex-col items-center gap-2">
+									<Sun class="h-10 w-10 animate-pulse text-amber-400" />
+									<span class="text-sm text-zinc-500">Loading weather...</span>
+								</div>
+							{:else}
+								<Sun class="h-10 w-10 text-amber-400" />
 							{/if}
-						</div> -->
+						</div>
 					</div>
 
-					{#if filteredData.length > 1}
-						<div class="relative h-[400px] w-full rounded-lg bg-zinc-900 p-4 shadow-lg">
-							<div
-								class="absolute top-4 left-1/2 z-10 -translate-x-1/2 text-sm font-semibold text-zinc-300"
+					<!-- Averages (title + button outside card) - pushed to bottom to align with Progress chart -->
+					<div class="mt-auto flex shrink-0 flex-col gap-2">
+						<div class="flex items-center justify-between">
+							<h2 class="text-lg font-semibold text-zinc-100">Averages</h2>
+							<button
+								onclick={() => (averagesCurrentMonthOnly = !averagesCurrentMonthOnly)}
+								class="text-xs font-medium text-indigo-400 hover:text-indigo-300"
 							>
-								Progress
+								{averagesCurrentMonthOnly ? 'This Month' : 'All Time'}
+							</button>
+						</div>
+						<div class="rounded-xl bg-zinc-900 p-4 shadow-lg">
+							<div class="flex flex-wrap justify-between gap-2">
+								{#each Object.entries(averageLabels) as [key, meta]}
+									<div class="flex min-w-0 flex-1 flex-col items-center gap-0.5">
+										<span class="text-base font-semibold text-zinc-200" style:color={meta.color}>
+											{averages[key] != null ? averages[key] : '—'}
+										</span>
+										<span class="text-xs text-zinc-500">{meta.label}</span>
+									</div>
+								{/each}
 							</div>
-							<LayerCake
-								padding={{ top: 36, right: 15, bottom: 32, left: 30 }}
-								x="created_at"
-								y="mood"
-								{yDomain}
-								xScale={scaleTime()}
-								data={filteredData}
+						</div>
+					</div>
+				</div>
+
+				<!-- Row 2: Today's Tasks (aligns with Events) -->
+				<div class="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+					<h2 class="text-lg font-semibold text-zinc-100">Today's Tasks</h2>
+					{#if todayDeadlines.length === 0}
+						<p class="text-center text-sm text-zinc-500">No deadlines for today</p>
+					{:else}
+						<div class="grid grid-cols-1 gap-2">
+							{#each todayDeadlines as item}
+								{#if item.kind === 'task'}
+									{@const task = item.data}
+									{@const statusStyle = getStatusColor(task.status)}
+									<div
+										class="rounded-xl bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
+									>
+										<div class="flex items-center justify-between gap-2.5">
+											<div class="flex min-w-0 flex-1 items-center gap-2.5">
+												<SquareCheckBig class="h-4 w-4 shrink-0 text-indigo-400" />
+												<div class="min-w-0 flex-1">
+													<div
+														class="truncate text-sm font-medium text-zinc-100"
+														title={task.title}
+													>
+														{task.title}
+													</div>
+													<div class="flex items-center gap-2 text-xs">
+														<span
+															class={`rounded-full px-1.5 py-0.5 ${statusStyle.bg} ${statusStyle.text}`}
+														>
+															{getStatusLabel(task.status)}
+														</span>
+														{#if task.type}
+															<span class="text-zinc-500"
+																>{settings.getTaskType(task.type)?.label ?? task.type}</span
+															>
+														{/if}
+													</div>
+												</div>
+											</div>
+											{#if task.time_of_day}
+												<span class="shrink-0 text-xs text-zinc-500">
+													{task.time_of_day.slice(0, 5)}
+												</span>
+											{/if}
+										</div>
+									</div>
+								{:else}
+									{@const artCall = item.data}
+									<div
+										class="rounded-xl bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
+									>
+										<div class="flex items-center gap-2.5">
+											<Palette class="h-4 w-4 shrink-0 text-emerald-400" />
+											<div class="min-w-0 flex-1">
+												<div
+													class="truncate text-sm font-medium text-zinc-100"
+													title={artCall.name}
+												>
+													{artCall.name}
+												</div>
+												<div class="flex items-center gap-2 text-xs text-zinc-400">
+													<span class="truncate">{artCall.location}</span>
+													{#if artCall.funds}
+														<span class="text-zinc-500">&bull;</span>
+														<span class="text-emerald-400">&euro;{artCall.funds}</span>
+													{/if}
+												</div>
+											</div>
+										</div>
+									</div>
+								{/if}
+							{/each}
+						</div>
+					{/if}
+				</div>
+			</div>
+
+			<!-- Section 2: 2/3 width, 2 rows -->
+			<div class="flex min-h-0 min-w-0 flex-1 flex-col gap-4 lg:flex-[2]">
+				<!-- Row 1: Programs metrics chart -->
+				<div class="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+					{#if filteredData.length > 1}
+						<!-- Header: Progress | metrics filter (left) ... This Month (right) -->
+						<div class="flex items-center justify-between gap-2">
+							<div class="flex items-center gap-2">
+								<h2 class="text-lg font-semibold text-zinc-100">Progress</h2>
+								<div class="relative">
+									<button
+										onclick={() => (metricsDropdownOpen = !metricsDropdownOpen)}
+										class="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 shadow-sm transition-colors hover:bg-zinc-700"
+									>
+										<div class="flex items-center gap-1">
+											{#each Object.entries(activeMetrics) as [key, config]}
+												{#if config.active}
+													<span
+														class="h-2.5 w-2.5 rounded-full"
+														style:background-color={config.color}
+														title={config.label}
+													></span>
+												{/if}
+											{/each}
+										</div>
+										<span class="text-zinc-400">{activeMetricsCount} selected</span>
+										<ArrowDown class="h-3.5 w-3.5 text-zinc-400" />
+									</button>
+
+									{#if metricsDropdownOpen}
+										<button
+											class="fixed inset-0 z-10"
+											onclick={() => (metricsDropdownOpen = false)}
+											aria-label="Close dropdown"
+										></button>
+										<div
+											class="absolute top-full left-0 z-20 mt-1 w-48 rounded-md border border-zinc-700 bg-zinc-800 py-1 shadow-lg"
+										>
+											{#each Object.entries(activeMetrics) as [key, config]}
+												<button
+													class="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm transition-colors hover:bg-zinc-700"
+													onclick={() => toggleMetric(key)}
+												>
+													<span class="h-3 w-3 rounded-full" style:background-color={config.color}
+													></span>
+													<span class={config.active ? 'text-zinc-100' : 'text-zinc-400'}>
+														{config.label}
+													</span>
+													{#if config.active}
+														<svg
+															class="ml-auto h-4 w-4 text-indigo-400"
+															fill="none"
+															viewBox="0 0 24 24"
+															stroke="currentColor"
+														>
+															<path
+																stroke-linecap="round"
+																stroke-linejoin="round"
+																stroke-width="2"
+																d="M5 13l4 4L19 7"
+															/>
+														</svg>
+													{/if}
+												</button>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							</div>
+							<button
+								onclick={() => (chartCurrentMonthOnly = !chartCurrentMonthOnly)}
+								class="shrink-0 text-xs font-medium text-indigo-400 hover:text-indigo-300"
+								title={chartCurrentMonthOnly ? 'Show all time' : 'Show current month'}
+								style={!chartCurrentMonthOnly ? `color: ${settings.getAccentLightHex()}` : ''}
 							>
-								<Svg>
-									<AxisX
-										gridlines={false}
-										ticks={filteredData.length > 10 ? 5 : filteredData.length}
-										format={formatTime}
-										tickMarks={true}
-										dy={12}
-									/>
-									<AxisY gridlines={true} ticks={5} tickMarks={true} />
-									{#each Object.entries(activeMetrics) as [key, config]}
-										{#if config.active}
-											<Line stroke={config.color} yAccessorKey={key} />
-										{/if}
-									{/each}
-								</Svg>
-								<Html>
-									<SharedTooltip
-									labels={Object.fromEntries(
-										Object.entries(activeMetrics)
-											.filter(([k, v]) => v.active)
-											.map(([k, v]) => [k, { text: v.label, color: v.color }])
-									)}
-									formatTitle={formatTime}
-								/>
-								</Html>
-							</LayerCake>
+								{chartCurrentMonthOnly ? 'This Month' : 'All Time'}
+							</button>
+						</div>
+
+						<div class="relative flex min-h-0 flex-1 flex-col rounded-xl bg-zinc-900 p-4 shadow-lg">
+							<div class="relative min-h-0 flex-1">
+								<LayerCake
+									padding={{ top: 36, right: 15, bottom: 32, left: 30 }}
+									x="created_at"
+									y="mood"
+									{yDomain}
+									xScale={scaleTime()}
+									data={chartData}
+								>
+									<Svg>
+										<AxisX
+											gridlines={false}
+											ticks={chartData.length > 10 ? 5 : chartData.length}
+											format={formatTime}
+											tickMarks={true}
+											dy={12}
+										/>
+										<AxisY gridlines={true} ticks={5} tickMarks={true} />
+										{#each Object.entries(activeMetrics) as [key, config]}
+											{#if config.active}
+												<Line
+													stroke={config.color}
+													yAccessorKey={key}
+													smoothing={settings.getChartSmoothing()}
+													strokeDasharray={config.strokeDasharray ?? 'none'}
+												/>
+											{/if}
+										{/each}
+									</Svg>
+									<Html>
+										<SharedTooltip
+											labels={Object.fromEntries(
+												Object.entries(activeMetrics)
+													.filter(([k, v]) => v.active)
+													.map(([k, v]) => [k, { text: v.label, color: v.color }])
+											)}
+											formatTitle={formatTime}
+										/>
+									</Html>
+								</LayerCake>
+							</div>
 						</div>
 					{:else}
 						<div
-							class="flex h-[400px] w-full items-center justify-center rounded-lg bg-zinc-900 shadow-lg"
+							class="flex min-h-[200px] flex-1 items-center justify-center rounded-xl bg-zinc-900 shadow-lg"
 						>
 							<span class="text-zinc-500">Not enough data to display chart</span>
 						</div>
 					{/if}
 				</div>
 
-				<!-- Events Column - 1/4 width on desktop, third on mobile -->
+				<!-- Row 2: Events -->
 				{#if filteredData.length > 0}
-					<div class="order-3 space-y-3 lg:order-2 lg:col-span-1">
+					<div class="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
 						<div class="flex items-center justify-between">
 							<h2 class="text-lg font-semibold text-zinc-100">Events</h2>
 							<button
@@ -550,151 +887,52 @@
 								{eventsCurrentMonthOnly ? 'This Month' : 'All Time'}
 							</button>
 						</div>
-						<div class="grid grid-cols-2 gap-2">
-							{#each Object.entries(activityStats) as [key, stat]}
+
+						<div
+							class="flex min-w-0 flex-1 flex-col gap-4 rounded-xl bg-zinc-900 p-4 shadow-lg sm:w-full sm:flex-row"
+						>
+							<!-- Chart: 2/3 width, spans full width of its flex space (responsive like Progress chart) -->
+							<div class="relative flex min-h-[160px] w-full min-w-0 flex-[2] overflow-hidden">
 								<div
-									class="rounded-lg bg-zinc-900 px-2 py-2 shadow-lg transition-all hover:bg-zinc-800"
+									class="relative min-h-0 w-full min-w-0 flex-1"
+									bind:this={eventsChartContainerRef}
 								>
-									<div class="flex items-center gap-1.5">
-										<span class="text-lg">{stat.icon}</span>
-										<div class="min-w-0 flex-1">
-											<div class="truncate text-xs font-medium text-zinc-300">
-												{stat.label}
-											</div>
-										</div>
-										<div class="text-xl font-bold text-white">
-											{stat.count}
-										</div>
-									</div>
+									{#if eventsChartSize}
+										<EventsScatter
+											points={scatterPoints}
+											eventOrder={scatterEventOrder}
+											{eventColors}
+											eventLabels={scatterEventLabels}
+											width={eventsChartSize.width}
+											height={eventsChartSize.height}
+										/>
+									{/if}
 								</div>
-							{/each}
+							</div>
+
+							<!-- Stats: 1/3 width, 2 columns, fills its space -->
+							<div
+								class="grid w-full min-w-0 flex-[1] grid-cols-2 gap-x-3 gap-y-0.5 border-t border-zinc-700 pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-3"
+							>
+								{#each Object.entries(activityStats) as [key, stat]}
+									<div class="flex items-center gap-1.5">
+										<span class="shrink-0 text-xs">{stat.icon}</span>
+										<span
+											class="truncate text-xs {stat.count > 0 ? 'text-zinc-300' : 'text-zinc-500'}"
+											>{stat.label}</span
+										>
+										<span
+											class="ml-auto shrink-0 text-xs font-bold"
+											style="color: {stat.count > 0 ? (eventColors[key] ?? '#71717a') : '#52525b'}"
+										>
+											{stat.count}
+										</span>
+									</div>
+								{/each}
+							</div>
 						</div>
 					</div>
 				{/if}
-
-				<!-- Today's Tasks + Done - 1/4 width on desktop, second on mobile (always show when logged in) -->
-				<div class="order-2 space-y-3 lg:order-3 lg:col-span-1">
-					<!-- Today's Tasks Section -->
-					<h2 class="text-lg font-semibold text-zinc-100">Today's Tasks</h2>
-					{#if todayDeadlines.length === 0}
-							<div class="rounded-lg bg-zinc-900/60 px-3 py-4 text-center text-sm text-zinc-500">
-								No deadlines for today
-							</div>
-						{:else}
-							<div class="grid grid-cols-1 gap-2">
-								{#each todayDeadlines as item}
-									{#if item.kind === 'task'}
-										{@const task = item.data}
-										{@const statusStyle = getStatusColor(task.status)}
-										<div
-											class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
-										>
-											<div class="flex items-center justify-between gap-2.5">
-												<div class="flex min-w-0 flex-1 items-center gap-2.5">
-													<SquareCheckBig class="h-4 w-4 shrink-0 text-indigo-400" />
-													<div class="min-w-0 flex-1">
-														<div
-															class="truncate text-sm font-medium text-zinc-100"
-															title={task.title}
-														>
-															{task.title}
-														</div>
-														<div class="flex items-center gap-2 text-xs">
-															<span
-																class={`rounded-full px-1.5 py-0.5 ${statusStyle.bg} ${statusStyle.text}`}
-															>
-																{getStatusLabel(task.status)}
-															</span>
-															{#if task.type}
-																<span class="text-zinc-500"
-																	>{settings.getTaskType(task.type)?.label ?? task.type}</span
-																>
-															{/if}
-														</div>
-													</div>
-												</div>
-												{#if task.time_of_day}
-													<span class="shrink-0 text-xs text-zinc-500">
-														{task.time_of_day.slice(0, 5)}
-													</span>
-												{/if}
-											</div>
-										</div>
-									{:else}
-										{@const artCall = item.data}
-										<div
-											class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
-										>
-											<div class="flex items-center gap-2.5">
-												<Palette class="h-4 w-4 text-emerald-400" />
-												<div class="min-w-0 flex-1">
-													<div
-														class="truncate text-sm font-medium text-zinc-100"
-														title={artCall.name}
-													>
-														{artCall.name}
-													</div>
-													<div class="flex items-center gap-2 text-xs text-zinc-400">
-														<span class="truncate">{artCall.location}</span>
-														{#if artCall.funds}
-															<span class="text-zinc-500">•</span>
-															<span class="text-emerald-400">€{artCall.funds}</span>
-														{/if}
-													</div>
-												</div>
-											</div>
-										</div>
-									{/if}
-								{/each}
-							</div>
-						{/if}
-
-						<!-- Done Section -->
-						<div class="pt-2">
-							<h2 class="text-lg font-semibold text-zinc-100">Done</h2>
-						</div>
-						<div class="grid grid-cols-2 gap-2 lg:grid-cols-1">
-							<div
-								class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
-							>
-								<div class="flex items-center gap-2.5">
-									<span class="text-lg">📝</span>
-									<div class="flex-1">
-										<div class="text-xs font-medium text-zinc-300">Applied Art Calls</div>
-									</div>
-									<div class="text-xl font-bold text-white">
-										{appliedArtCallsCount}
-									</div>
-								</div>
-							</div>
-							<div
-								class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
-							>
-								<div class="flex items-center gap-2.5">
-									<span class="text-lg">✅</span>
-									<div class="flex-1">
-										<div class="text-xs font-medium text-zinc-300">Completed Projects</div>
-									</div>
-									<div class="text-xl font-bold text-white">
-										{completedProjectsCount}
-									</div>
-								</div>
-							</div>
-							<div
-								class="rounded-lg bg-zinc-900 px-3 py-2.5 shadow-lg transition-all hover:bg-zinc-800"
-							>
-								<div class="flex items-center gap-2.5">
-									<span class="text-lg">☑️</span>
-									<div class="flex-1">
-										<div class="text-xs font-medium text-zinc-300">Completed Tasks</div>
-									</div>
-									<div class="text-xl font-bold text-white">
-										{completedTasksCount}
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
 			</div>
 		</div>
 	{:else}

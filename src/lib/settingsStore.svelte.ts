@@ -30,7 +30,12 @@ export type GlobalSettings = {
 	project_types: SettingItem[]; // Project Types
 	task_types: SettingItem[]; // Task Types
 	notes_types: SettingItem[]; // Note Colors (mostly just colors)
-	global_types: { accent: string; transition_duration: number }; // Global Accent and Transition
+	global_types: {
+		accent: string;
+		transition_duration: number;
+		location?: { city: string; country: string };
+		chart_smoothing?: number;
+	};
 	daily_type: Record<string, string[]>; // Daily Activity Types
 };
 
@@ -50,7 +55,7 @@ const defaultSettings: GlobalSettings = {
 		{ id: '3', label: 'Admin', color: 'bg-zinc-500' }
 	],
 	notes_types: PALETTE.map((p, i) => ({ id: i, color: p.hex })),
-	global_types: { accent: 'bg-indigo-600', transition_duration: 200 },
+	global_types: { accent: 'bg-indigo-600', transition_duration: 200, location: { city: '', country: '' }, chart_smoothing: 0.5 },
 	daily_type: {
 		work: [],
 		study: [],
@@ -110,7 +115,7 @@ class SettingsStore {
 				project_types: data.project_types || defaultSettings.project_types,
 				task_types: data.task_types || defaultSettings.task_types,
 				notes_types: data.notes_types || defaultSettings.notes_types,
-				global_types: data.global_types || defaultSettings.global_types,
+				global_types: { ...defaultSettings.global_types, ...(data.global_types || {}) },
 				daily_type: data.daily_type || defaultSettings.daily_type
 			};
 		} else if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows found"
@@ -174,13 +179,27 @@ class SettingsStore {
 	// Get a lighter variant of accent (for hover states, text colors)
 	getAccentLightHex(): string {
 		const hex = this.getAccentHex();
-		// Lighten the color by ~20% for hover/text states
+		// Lighten the color by ~30% for hover/text states
 		return this.lightenColor(hex, 0.3);
+	}
+
+	// Get an even lighter variant for hover (e.g. button hover states)
+	getAccentHoverHex(): string {
+		const hex = this.getAccentHex();
+		return this.lightenColor(hex, 0.5);
 	}
 
 	// Get transition duration
 	getTransitionDuration(): number {
 		return this.settings.global_types.transition_duration ?? 200;
+	}
+
+	getChartSmoothing(): number {
+		return this.settings.global_types.chart_smoothing ?? 0.5;
+	}
+
+	getLocation(): { city: string; country: string } {
+		return this.settings.global_types.location || { city: '', country: '' };
 	}
 
 	private lightenColor(hex: string, percent: number): string {
